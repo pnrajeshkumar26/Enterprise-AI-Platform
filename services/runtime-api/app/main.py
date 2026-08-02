@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.core.config import settings
 from app.routers import health
+from app.routers import models
 
 app = FastAPI(
     title=settings.app_name,
@@ -10,6 +11,7 @@ app = FastAPI(
 )
 
 app.include_router(health.router)
+app.include_router(models.router)
 
 
 @app.get("/", tags=["Home"])
