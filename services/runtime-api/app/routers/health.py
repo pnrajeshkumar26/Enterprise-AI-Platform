@@ -1,15 +1,16 @@
 from fastapi import APIRouter
 
-from app.core.config import settings
+from app.schemas.health import HealthResponse
+from app.services.health_service import health_service
 
 router = APIRouter()
 
 
-@router.get("/health", tags=["Health"])
+@router.get(
+    "/health",
+    response_model=HealthResponse,
+    tags=["Health"],
+    summary="Runtime Health Check",
+)
 def health():
-    return {
-        "status": "healthy",
-        "service": "runtime-api",
-        "version": settings.app_version,
-        "environment": settings.app_env,
-    }
+    return health_service.get_health()
