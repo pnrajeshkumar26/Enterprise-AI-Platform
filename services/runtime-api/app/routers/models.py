@@ -1,10 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from app.schemas.model import ModelResponse
 
-from app.models.model_registry import (
-    list_models,
-    get_model,
-)
+from app.schemas.model import ModelResponse
+from app.services.model_service import model_service
 
 router = APIRouter()
 
@@ -15,9 +12,8 @@ router = APIRouter()
     tags=["Models"],
     summary="List Available Models",
 )
-
 def get_models():
-    return list_models()
+    return model_service.list_models()
 
 
 @router.get(
@@ -26,10 +22,9 @@ def get_models():
     tags=["Models"],
     summary="Get Model Details",
 )
-
 def get_model_details(model_name: str):
 
-    model = get_model(model_name)
+    model = model_service.get_model(model_name)
 
     if model is None:
         raise HTTPException(
