@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 @dataclass
 class ModelInfo:
@@ -11,14 +14,19 @@ class ModelInfo:
 
 MODEL_REGISTRY = {
 
-    "tinyllama": ModelInfo(
-        name="TinyLlama",
-        provider="HuggingFace",
-        model_path="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-        quantization="Q4_K_M",
-        context_length=2048,
-        enabled=True,
+   "tinyllama": ModelInfo(
+    name="TinyLlama",
+    provider="HuggingFace",
+    model_path=str(
+        PROJECT_ROOT
+        / "models"
+        / "TinyLlama"
+        / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
     ),
+    quantization="Q4_K_M",
+    context_length=2048,
+    enabled=True,
+),
 
     "phi3": ModelInfo(
         name="Phi-3 Mini",
