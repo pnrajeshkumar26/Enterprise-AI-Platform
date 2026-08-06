@@ -1,6 +1,9 @@
+import logging
 from pathlib import Path
 
 from llama_cpp import Llama
+
+logger = logging.getLogger(__name__)
 
 
 class LlamaEngine:
@@ -18,7 +21,7 @@ class LlamaEngine:
                 f"Model file not found: {model_path}"
             )
 
-        print(f"Loading model from: {model_path}")
+        logger.info("Loading model from: %s", model_path)
 
         self.llm = Llama(
             model_path=str(model_path),
@@ -26,7 +29,7 @@ class LlamaEngine:
             verbose=False,
         )
 
-        print(f"Model loaded successfully: {model_path.name}")
+        logger.info("Model loaded successfully: %s", model_path.name)
 
     def generate(self, prompt: str) -> str:
         """

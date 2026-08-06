@@ -1,7 +1,11 @@
+import logging
+
 from app.engines import LlamaEngine
 from app.models.model_registry import get_model
 from app.schemas.generate import GenerateResponse
 from app.services.metrics_service import metrics_service
+
+logger = logging.getLogger(__name__)
 
 
 class GenerateService:
@@ -11,25 +15,20 @@ class GenerateService:
         pass
 
     def generate(self, model_name: str, prompt: str) -> GenerateResponse:
-        # Fetch model metadata from the centralized registry
         model = get_model(model_name)
 
-        print("MODEL =", model)
-        print("TYPE =", type(model))
-
         if model is None:
+            logger.warning("Requested model was not found: %s", model_name)
             raise ValueError(f"Model '{model_name}' not found")
 
-        # Count this valid generation request
+        logger.info("Selected model: %s", model.name)
+        logger.debug("Model metadata: %s", model)
+
         metrics_service.increment_requests()
 
-        # Create engine using the model path from the registry
         engine = LlamaEngine(model.model_path)
-
-        # Generate text
         generated_text = engine.generate(prompt)
 
-        # Build API response
         return GenerateResponse(
             model=model.name,
             response=generated_text,
