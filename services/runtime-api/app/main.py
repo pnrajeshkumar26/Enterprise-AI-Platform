@@ -5,6 +5,7 @@ from app.routers import health
 from app.routers import models
 from app.routers import generate
 from app.routers.runtime import router as runtime_router
+from app.routers.metrics import router as metrics_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -16,6 +17,7 @@ app.include_router(health.router)
 app.include_router(models.router)
 app.include_router(generate.router)
 app.include_router(runtime_router)
+app.include_router(metrics_router)
 
 
 @app.get("/", tags=["Home"])

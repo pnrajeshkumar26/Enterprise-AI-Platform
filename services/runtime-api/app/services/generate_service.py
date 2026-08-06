@@ -1,6 +1,7 @@
 from app.engines import LlamaEngine
 from app.models.model_registry import get_model
 from app.schemas.generate import GenerateResponse
+from app.services.metrics_service import metrics_service
 
 
 class GenerateService:
@@ -18,6 +19,9 @@ class GenerateService:
 
         if model is None:
             raise ValueError(f"Model '{model_name}' not found")
+
+        # Count this valid generation request
+        metrics_service.increment_requests()
 
         # Create engine using the model path from the registry
         engine = LlamaEngine(model.model_path)

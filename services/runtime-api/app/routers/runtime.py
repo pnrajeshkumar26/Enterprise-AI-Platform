@@ -12,4 +12,4 @@ router = APIRouter(
     "/status",
 )
 def runtime_status():
-    return runtime_service.get_status()
+    return runtime_service.get_runtime_status()

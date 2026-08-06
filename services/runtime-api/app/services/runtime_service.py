@@ -5,8 +5,7 @@ from app.schemas.runtime import RuntimeStatusResponse
 class RuntimeService:
     """Provides runtime engine information."""
 
-    def get_status(self) -> RuntimeStatusResponse:
-
+    def get_runtime_status(self) -> RuntimeStatusResponse:
         model = get_model("TinyLlama")
 
         return RuntimeStatusResponse(
@@ -22,4 +21,3 @@ class RuntimeService:
 
 
 runtime_service = RuntimeService()
-from app.services.runtime_service import runtime_service
