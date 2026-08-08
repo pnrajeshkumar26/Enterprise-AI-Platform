@@ -29,3 +29,14 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ## Logging and error handling
 
 The service uses structured logging via Python's logging module and centralized FastAPI exception handlers for validation and unexpected failures.
+
+## Docker Support
+
+This service is containerized using Docker.
+
+### Files
+
+- Dockerfile
+- .dockerignore
+
+The `.dockerignore` file excludes unnecessary files such as virtual environments, caches, IDE files, and logs from the Docker build context to keep images smaller and improve build performance.
