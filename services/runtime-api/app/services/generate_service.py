@@ -1,5 +1,7 @@
 import logging
 
+from app.clients.tgi_client import TGIClient
+from app.core.config import settings
 from app.models.model_registry import get_model
 from app.schemas.generate import GenerateResponse
 from app.services.metrics_service import metrics_service
@@ -8,9 +10,18 @@ logger = logging.getLogger(__name__)
 
 
 class GenerateService:
-    """Business logic for text generation."""
+    """
+    Business logic for text generation.
+    """
 
-    def generate(self, model_name: str, prompt: str) -> GenerateResponse:
+    def __init__(self):
+        self.client = TGIClient(settings.tgi_url)
+
+    def generate(
+        self,
+        model_name: str,
+        prompt: str,
+    ) -> GenerateResponse:
 
         model = get_model(model_name)
 
@@ -19,11 +30,13 @@ class GenerateService:
 
         metrics_service.increment_requests()
 
-        logger.info("Received prompt for model %s", model_name)
+        logger.info("Sending request to TGI for model %s", model_name)
+
+        generated_text = self.client.generate(prompt)
 
         return GenerateResponse(
             model=model.name,
-            response="Inference server integration will be added in Sprint 8.",
+            response=generated_text,
             status="success",
         )
 
