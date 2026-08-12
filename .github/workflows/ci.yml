@@ -40,7 +40,7 @@ jobs:
           pip install pytest
 
       - name: Run tests
-        run: pytest -q
+        run: PYTHONPATH=. pytest -q ../../tests
 
   docker:
     name: Build Runtime API Image
