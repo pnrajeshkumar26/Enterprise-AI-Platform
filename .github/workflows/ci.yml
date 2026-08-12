@@ -23,6 +23,14 @@ jobs:
       run:
         working-directory: services/runtime-api
 
+    steps: 
+      - name: Show GitHub OIDC identity
+        run: |
+          echo "Repository: ${{ github.repository }}"
+          echo "Repository ID: ${{ github.repository_id }}"
+          echo "Owner ID: ${{ github.repository_owner_id }}"
+          echo "Ref: ${{ github.ref }}"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
