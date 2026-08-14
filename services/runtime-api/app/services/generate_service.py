@@ -1,6 +1,6 @@
 import logging
 
-from app.clients.tgi_client import TGIClient
+from app.clients.vllm_client import VLLMClient
 from app.core.config import settings
 from app.models.model_registry import get_model
 from app.schemas.generate import GenerateResponse
@@ -15,7 +15,7 @@ class GenerateService:
     """
 
     def __init__(self):
-        self.client = TGIClient(settings.tgi_url)
+        self.client = VLLMClient(settings.vllm_url, settings.vllm_model_id)
 
     def generate(
         self,
@@ -30,7 +30,7 @@ class GenerateService:
 
         metrics_service.increment_requests()
 
-        logger.info("Sending request to TGI for model %s", model_name)
+        logger.info("Sending request to vLLM for model %s", model_name)
 
         generated_text = self.client.generate(prompt)
 
