@@ -30,11 +30,22 @@ with st.sidebar:
     model = st.selectbox(
         "Select model",
         [
+            "auto",
             "tinyllama",
             "phi3",
         ],
         index=0,
     )
+
+    if model == "auto":
+        st.info(
+            "AUTO: simple requests use TinyLlama; "
+            "complex and technical requests use Phi-3."
+        )
+    elif model == "tinyllama":
+        st.caption("Manual route → TinyLlama / llama.cpp")
+    elif model == "phi3":
+        st.caption("Manual route → Phi-3 / vLLM")
 
     st.divider()
 

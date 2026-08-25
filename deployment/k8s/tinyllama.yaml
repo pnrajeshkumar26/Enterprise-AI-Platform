@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tinyllama
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: tinyllama
+  template:
+    metadata:
+      labels:
+        app: tinyllama
+    spec:
+      runtimeClassName: nvidia
+      containers:
+        - name: tinyllama
+          image: enterprise-tinyllama:1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MODEL_PATH
+              value: /models/TinyLlama/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: compute,utility
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 12
+      volumes:
+        - name: model-storage
+          hostPath:
+            path: /models
+            type: Directory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tinyllama
+spec:
+  selector:
+    app: tinyllama
+  ports:
+    - port: 8000
+      targetPort: 8000

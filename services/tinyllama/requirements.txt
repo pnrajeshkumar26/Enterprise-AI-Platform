@@ -1,0 +1,8 @@
+fastapi==0.140.13
+uvicorn==0.51.0
+pydantic==2.13.4
+
+nvidia-cuda-runtime-cu12==12.4.127
+nvidia-cublas-cu12==12.4.5.8
+
+llama-cpp-python==0.3.34

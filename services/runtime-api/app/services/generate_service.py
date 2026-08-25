@@ -1,73 +1,79 @@
 import logging
+import os
+
+import requests
 
 from app.clients.vllm_client import VLLMClient
 from app.core.config import settings
 from app.models.model_registry import get_model
+from app.routing.model_router import model_router
 from app.schemas.generate import GenerateResponse
-from app.services.metrics_service import metrics_service
+from app.services.gpu_lifecycle_service import gpu_lifecycle_service
 
 logger = logging.getLogger(__name__)
 
 
 class GenerateService:
     """
-    Routes generation requests to the correct inference engine.
+    Runtime API generation service.
 
-    tinyllama -> local llama.cpp
-    phi3      -> vLLM
+    Modes:
+      tinyllama -> TinyLlama backend
+      phi3      -> Phi-3/vLLM backend
+      auto      -> ModelRouter selects a backend
 
-    TinyLlama is initialized lazily so that the Runtime API can start
-    without consuming the GPU when vLLM is the active inference engine.
+    Runtime API itself does not run llama.cpp.
+    It orchestrates the GPU backend and calls the backend over HTTP.
     """
 
-    def __init__(self):
-        self.llama_engine = None
+    TINYLLAMA_URL = os.getenv(
+        "TINYLLAMA_URL",
+        "http://tinyllama:8000",
+    )
 
-        # vLLM is remote from the Runtime API perspective.
-        # Runtime API itself does not initialize a GPU engine at startup.
+    VLLM_URL = os.getenv(
+        "VLLM_URL",
+        settings.vllm_url,
+    )
+
+    def __init__(self):
         self.vllm_client = VLLMClient(
-            settings.vllm_url,
+            self.VLLM_URL,
             settings.vllm_model_id,
         )
 
-        logger.info(
-            "Runtime API initialized with vLLM endpoint: %s",
-            settings.vllm_url,
-        )
-
-    def _initialize_tinyllama(self):
-        """
-        Lazily initialize the local TinyLlama llama.cpp engine.
-
-        This keeps TinyLlama from consuming GPU memory during application
-        startup when Phi-3/vLLM is the active inference backend.
-        """
-
-        if self.llama_engine is not None:
-            return
-
-        from app.engines.llama_engine import LlamaEngine
-
-        tinyllama = get_model("tinyllama")
-
-        if tinyllama is None:
-            raise RuntimeError(
-                "TinyLlama is not registered"
-            )
-
-        if not tinyllama.enabled:
-            raise RuntimeError(
-                "TinyLlama is disabled"
-            )
+        self.http = requests.Session()
 
         logger.info(
-            "Lazily initializing local TinyLlama engine: %s",
-            tinyllama.model_path,
+            "Runtime API initialized: tinyllama=%s vllm=%s",
+            self.TINYLLAMA_URL,
+            self.VLLM_URL,
         )
 
-        self.llama_engine = LlamaEngine(
-            tinyllama.model_path
+    def _generate_tinyllama(self, prompt: str) -> str:
+        response = self.http.post(
+            f"{self.TINYLLAMA_URL}/generate",
+            json={"prompt": prompt},
+            timeout=360,
         )
+
+        if not response.ok:
+            raise RuntimeError(
+                f"TinyLlama backend failed: "
+                f"{response.status_code} {response.text}"
+            )
+
+        data = response.json()
+
+        if data.get("status") != "success":
+            raise RuntimeError(
+                f"TinyLlama backend returned an error: {data}"
+            )
+
+        return data.get("response", "")
+
+    def _generate_phi3(self, prompt: str) -> str:
+        return self.vllm_client.generate(prompt)
 
     def generate(
         self,
@@ -75,50 +81,63 @@ class GenerateService:
         prompt: str,
     ) -> GenerateResponse:
 
-        model = get_model(model_name)
+        requested_model = (
+            model_name or "auto"
+        ).lower().strip()
+
+        if requested_model == "auto":
+            decision = model_router.route(prompt)
+            selected_model = decision.selected_model
+
+            logger.info(
+                "AUTO routing: model=%s score=%s reason=%s",
+                selected_model,
+                decision.score,
+                decision.reason,
+            )
+        else:
+            decision = None
+            selected_model = requested_model
+
+        model = get_model(selected_model)
 
         if model is None:
             raise ValueError(
-                f"Model '{model_name}' not found"
+                f"Model '{selected_model}' not found"
             )
 
         if not model.enabled:
             raise ValueError(
-                f"Model '{model_name}' is disabled"
+                f"Model '{selected_model}' is disabled"
             )
 
-        metrics_service.increment_requests()
+        # Ensure the correct GPU backend owns the T4.
+        gpu_lifecycle_service.activate(
+            selected_model
+        )
 
-        model_key = model_name.lower()
+        if selected_model == "tinyllama":
 
-        if model_key == "tinyllama":
-
-            logger.info(
-                "Generating using local llama.cpp: %s",
-                model.name,
-            )
-
-            self._initialize_tinyllama()
-
-            generated_text = self.llama_engine.generate(
+            generated_text = self._generate_tinyllama(
                 prompt
             )
 
-        elif model_key == "phi3":
+        elif selected_model == "phi3":
 
-            logger.info(
-                "Generating using vLLM: %s",
-                model.name,
-            )
-
-            generated_text = self.vllm_client.generate(
+            generated_text = self._generate_phi3(
                 prompt
             )
 
         else:
             raise ValueError(
-                f"No inference engine configured for model '{model_name}'"
+                f"No inference engine configured for '{selected_model}'"
             )
+
+        logger.info(
+            "Generation completed: requested=%s selected=%s",
+            requested_model,
+            selected_model,
+        )
 
         return GenerateResponse(
             model=model.name,
