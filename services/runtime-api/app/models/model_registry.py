@@ -1,7 +1,9 @@
+import os
 from dataclasses import dataclass
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+MODEL_ROOT = os.getenv("MODEL_ROOT", "/models")
+
 
 @dataclass
 class ModelInfo:
@@ -12,21 +14,20 @@ class ModelInfo:
     context_length: int
     enabled: bool
 
+
 MODEL_REGISTRY = {
 
-   "tinyllama": ModelInfo(
-    name="TinyLlama",
-    provider="HuggingFace",
-    model_path=str(
-        PROJECT_ROOT
-        / "models"
-        / "TinyLlama"
-        / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+    "tinyllama": ModelInfo(
+        name="TinyLlama",
+        provider="HuggingFace",
+        model_path=(
+            f"{MODEL_ROOT}/TinyLlama/"
+            "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+        ),
+        quantization="Q4_K_M",
+        context_length=2048,
+        enabled=True,
     ),
-    quantization="Q4_K_M",
-    context_length=2048,
-    enabled=True,
-),
 
     "phi3": ModelInfo(
         name="Phi-3 Mini",
@@ -46,6 +47,7 @@ MODEL_REGISTRY = {
         enabled=False,
     ),
 }
+
 
 def get_model(model_name: str):
     return MODEL_REGISTRY.get(model_name.lower())

@@ -222,3 +222,6 @@ models/
 
 # Hugging Face cache
 .cache/
+
+# Local Streamlit virtual environment
+streamlit-env/

@@ -16,8 +16,9 @@ venv/
 
 # Environment files
 .env
+.env.*
 
-# Tests cache
+# Test cache
 .pytest_cache/
 
 # Logs
@@ -27,7 +28,11 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Python build
+# Python build artifacts
 build/
 dist/
 *.egg-info/
+
+# Local model files
+models/
+*.gguf

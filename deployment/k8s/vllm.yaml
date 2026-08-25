@@ -1,54 +1,55 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: runtime-api
+  name: vllm
   namespace: default
 spec:
   replicas: 1
-
-  # IMPORTANT:
-  # This is a single-GPU development cluster.
-  # Release the GPU completely before starting the replacement pod.
   strategy:
     type: Recreate
 
   selector:
     matchLabels:
-      app: runtime-api
+      app: vllm
 
   template:
     metadata:
       labels:
-        app: runtime-api
+        app: vllm
 
     spec:
-      # Use the NVIDIA container runtime directly.
-      # We are intentionally not depending on the NVIDIA device
-      # plugin/resource advertisement for today's TinyLlama milestone.
+      enableServiceLinks: false
       runtimeClassName: nvidia
 
       containers:
-        - name: runtime-api
-
-          image: enterprise-runtime-api:2.1
+        - name: vllm
+          image: vllm/vllm-openai:latest
           imagePullPolicy: IfNotPresent
 
           env:
-            - name: MODEL_ROOT
-              value: "/models"
-
-            - name: VLLM_URL
-              value: "http://vllm:8000"
-
-            - name: VLLM_MODEL_ID
-              value: "microsoft/Phi-3-mini-4k-instruct"
-
-            # Direct NVIDIA runtime configuration
             - name: NVIDIA_VISIBLE_DEVICES
               value: "all"
-
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: "compute,utility"
+
+          command:
+            - vllm
+            - serve
+
+          args:
+            - /models/Phi-3-mini-4k-instruct/snapshots/f39ac1d28e925b323eae81227eaba4464caced4e
+            - --served-model-name
+            - microsoft/Phi-3-mini-4k-instruct
+            - --dtype
+            - half
+            - --max-model-len
+            - "4096"
+            - --gpu-memory-utilization
+            - "0.80"
+            - --host
+            - "0.0.0.0"
+            - --port
+            - "8000"
 
           ports:
             - name: http
@@ -64,21 +65,10 @@ spec:
             httpGet:
               path: /health
               port: 8000
-              scheme: HTTP
-            initialDelaySeconds: 30
-            periodSeconds: 5
-            timeoutSeconds: 2
-            failureThreshold: 12
-
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8000
-              scheme: HTTP
             initialDelaySeconds: 60
             periodSeconds: 10
-            timeoutSeconds: 2
-            failureThreshold: 6
+            timeoutSeconds: 3
+            failureThreshold: 12
 
       volumes:
         - name: model-storage
@@ -90,11 +80,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: runtime-api
+  name: vllm
   namespace: default
 spec:
   selector:
-    app: runtime-api
+    app: vllm
 
   ports:
     - name: http

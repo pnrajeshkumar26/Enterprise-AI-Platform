@@ -26,6 +26,7 @@ class LlamaEngine:
         self.llm = Llama(
             model_path=str(model_path),
             n_ctx=2048,
+            n_gpu_layers=-1,
             verbose=False,
         )
 
