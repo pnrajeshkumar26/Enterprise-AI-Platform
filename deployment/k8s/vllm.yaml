@@ -37,7 +37,7 @@ spec:
             - serve
 
           args:
-            - /models/Phi-3-mini-4k-instruct/snapshots/f39ac1d28e925b323eae81227eaba4464caced4e
+            - /models/Phi-3-mini-4k-instruct
             - --served-model-name
             - microsoft/Phi-3-mini-4k-instruct
             - --dtype
