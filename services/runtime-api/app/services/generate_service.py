@@ -8,7 +8,6 @@ from app.core.config import settings
 from app.models.model_registry import get_model
 from app.routing.model_router import model_router
 from app.schemas.generate import GenerateResponse
-from app.services.gpu_lifecycle_service import gpu_lifecycle_service
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ class GenerateService:
 
     TINYLLAMA_URL = os.getenv(
         "TINYLLAMA_URL",
-        "http://tinyllama:8000",
+        "http://enterprise-tinyllama-gpu:8000",
     )
 
     VLLM_URL = os.getenv(
@@ -110,11 +109,6 @@ class GenerateService:
             raise ValueError(
                 f"Model '{selected_model}' is disabled"
             )
-
-        # Ensure the correct GPU backend owns the T4.
-        gpu_lifecycle_service.activate(
-            selected_model
-        )
 
         if selected_model == "tinyllama":
 

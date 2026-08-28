@@ -10,7 +10,7 @@ st.set_page_config(
 )
 
 
-RUNTIME_API_URL = "http://127.0.0.1:8000"
+RUNTIME_API_URL = "http://127.0.0.1:8001"
 
 
 st.title("🤖 Enterprise AI Platform")
@@ -67,7 +67,7 @@ with st.sidebar:
             )
 
             st.write(
-                f"Models: {health.get('models_loaded', 'N/A')}"
+                f"Models: {health.get('models_configured', 'N/A')}"
             )
 
             st.write(

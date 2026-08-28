@@ -33,7 +33,7 @@ MODEL_REGISTRY = {
         name="Phi-3 Mini",
         provider="Microsoft",
         model_path="microsoft/Phi-3-mini-4k-instruct",
-        quantization="Q4_K_M",
+        quantization="FP16",
         context_length=4096,
         enabled=True,
     ),

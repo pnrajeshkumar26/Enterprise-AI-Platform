@@ -1,30 +1,88 @@
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 
-nodes:
-  - role: control-plane
+name: enterprise-ai
 
+# ============================================================
+# Configure NVIDIA runtime for Kind containerd
+#
+# Both nodes use the GPU-capable Kind image, so the runtime
+# exists on the control-plane as well as the GPU worker.
+# ============================================================
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+      default_runtime_name = "nvidia"
+
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+      runtime_type = "io.containerd.runc.v2"
+
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
+      BinaryName = "/usr/bin/nvidia-container-runtime"
+
+nodes:
+
+  # ============================================================
+  # CONTROL PLANE
+  #
+  # GPU-capable image used so the NVIDIA runtime referenced by
+  # containerdConfigPatches is available during kubeadm init.
+  # ============================================================
+  - role: control-plane
+    image: kindest/node:v1.36.1-gpu
+
+    extraMounts:
+
+      - hostPath: /etc/cdi
+        containerPath: /etc/cdi
+        readOnly: true
+
+      - hostPath: /etc/nvidia-container-runtime
+        containerPath: /etc/nvidia-container-runtime
+        readOnly: true
+
+      - hostPath: /usr/bin/nvidia-container-runtime
+        containerPath: /usr/bin/nvidia-container-runtime
+        readOnly: true
+
+      - hostPath: /usr/bin/nvidia-container-cli
+        containerPath: /usr/bin/nvidia-container-cli
+        readOnly: true
+
+      - hostPath: /usr/bin/nvidia-ctk
+        containerPath: /usr/bin/nvidia-ctk
+        readOnly: true
+
+  # ============================================================
+  # GPU WORKER
+  # ============================================================
   - role: worker
     image: kindest/node:v1.36.1-gpu
 
     extraMounts:
 
-      # ============================================================
-      # KIND WORKER CONTAINERD STORAGE -> LARGE NVME
-      # ============================================================
+      # --------------------------------------------------------
+      # Persistent Kind/containerd storage
+      # --------------------------------------------------------
       - hostPath: /opt/dlami/nvme/enterprise-ai/kind-containerd
         containerPath: /var/lib/containerd
 
-      # ============================================================
-      # ENTERPRISE AI MODEL STORAGE -> LARGE NVME
-      # ============================================================
-      - hostPath: /opt/dlami/nvme/enterprise-ai/models
+      # --------------------------------------------------------
+      # PERSISTENT ENTERPRISE AI MODELS
+      #
+      # Host:
+      #   /home/ubuntu/models
+      #
+      # Worker:
+      #   /models
+      # --------------------------------------------------------
+      - hostPath: /home/ubuntu/models
         containerPath: /models
         readOnly: true
 
-      # ============================================================
-      # NVIDIA DEVICE NODES
-      # ============================================================
+      # --------------------------------------------------------
+      # NVIDIA devices
+      # --------------------------------------------------------
       - hostPath: /dev/nvidia0
         containerPath: /dev/nvidia0
 
@@ -40,16 +98,40 @@ nodes:
       - hostPath: /dev/nvidia-modeset
         containerPath: /dev/nvidia-modeset
 
-      # ============================================================
-      # HOST CDI
-      # ============================================================
+      # --------------------------------------------------------
+      # NVIDIA CDI
+      # --------------------------------------------------------
       - hostPath: /etc/cdi
         containerPath: /etc/cdi
         readOnly: true
 
-      # ============================================================
-      # NVIDIA DRIVER LIBRARIES
-      # ============================================================
+      # --------------------------------------------------------
+      # NVIDIA runtime configuration
+      # mode = cdi
+      # --------------------------------------------------------
+      - hostPath: /etc/nvidia-container-runtime
+        containerPath: /etc/nvidia-container-runtime
+        readOnly: true
+
+      # --------------------------------------------------------
+      # NVIDIA runtime binaries
+      # --------------------------------------------------------
+      - hostPath: /usr/bin/nvidia-container-runtime
+        containerPath: /usr/bin/nvidia-container-runtime
+        readOnly: true
+
+      - hostPath: /usr/bin/nvidia-container-cli
+        containerPath: /usr/bin/nvidia-container-cli
+        readOnly: true
+
+      - hostPath: /usr/bin/nvidia-ctk
+        containerPath: /usr/bin/nvidia-ctk
+        readOnly: true
+
+      # --------------------------------------------------------
+      # NVIDIA driver libraries
+      # Keep specific libraries; don't mask entire /lib.
+      # --------------------------------------------------------
       - hostPath: /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.595.91.07
         containerPath: /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.595.91.07
         readOnly: true

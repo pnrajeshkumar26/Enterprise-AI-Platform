@@ -20,7 +20,8 @@ class ModelRouter:
     Manual model selection bypasses this router.
     """
 
-    COMPLEX_KEYWORDS = {
+    # Ordered collection for deterministic matching/reasons.
+    COMPLEX_KEYWORDS = (
         "analyze",
         "analysis",
         "architecture",
@@ -40,9 +41,9 @@ class ModelRouter:
         "tradeoffs",
         "troubleshoot",
         "troubleshooting",
-    }
+    )
 
-    CODE_KEYWORDS = {
+    CODE_KEYWORDS = (
         "code",
         "script",
         "python",
@@ -56,7 +57,16 @@ class ModelRouter:
         "ansible",
         "javascript",
         "java",
-    }
+        "docker",
+        "vllm",
+        "llama.cpp",
+        "prometheus",
+        "grafana",
+        "gpu",
+        "cuda",
+        "inference",
+        "llmops",
+    )
 
     def route(self, prompt: str) -> RoutingDecision:
         text = prompt.strip().lower()
@@ -71,7 +81,9 @@ class ModelRouter:
         score = 0
         reasons = []
 
+        # ---------------------------------------------------------
         # Prompt length
+        # ---------------------------------------------------------
         if len(text) >= 500:
             score += 2
             reasons.append("long prompt")
@@ -79,17 +91,25 @@ class ModelRouter:
             score += 1
             reasons.append("moderately long prompt")
 
+        # ---------------------------------------------------------
         # Multiple questions / multi-step style
+        # ---------------------------------------------------------
         question_count = text.count("?")
+
         if question_count >= 2:
             score += 1
             reasons.append("multiple questions")
 
-        if re.search(r"\b(first|then|finally|step 1|step 2|step 3)\b", text):
+        if re.search(
+            r"\b(first|then|finally|step 1|step 2|step 3)\b",
+            text,
+        ):
             score += 1
             reasons.append("multi-step request")
 
+        # ---------------------------------------------------------
         # Complexity indicators
+        # ---------------------------------------------------------
         matched_complex = [
             keyword
             for keyword in self.COMPLEX_KEYWORDS
@@ -102,7 +122,14 @@ class ModelRouter:
                 f"complexity keyword: {matched_complex[0]}"
             )
 
-        # Coding / technical indicators
+        # Additional complexity signal when multiple indicators exist.
+        if len(matched_complex) >= 2:
+            score += 1
+            reasons.append("multiple complexity indicators")
+
+        # ---------------------------------------------------------
+        # Technical / code indicators
+        # ---------------------------------------------------------
         matched_code = [
             keyword
             for keyword in self.CODE_KEYWORDS
@@ -115,17 +142,28 @@ class ModelRouter:
                 f"technical/code keyword: {matched_code[0]}"
             )
 
+        # Additional signal for highly technical prompts.
+        if len(matched_code) >= 2:
+            score += 1
+            reasons.append("multiple technical indicators")
+
         if "```" in text:
             score += 2
             reasons.append("code block detected")
 
+        # ---------------------------------------------------------
         # Routing threshold
+        # ---------------------------------------------------------
         if score >= 3:
             selected_model = "phi3"
         else:
             selected_model = "tinyllama"
 
-        reason = ", ".join(reasons) if reasons else "simple request"
+        reason = (
+            ", ".join(reasons)
+            if reasons
+            else "simple request"
+        )
 
         return RoutingDecision(
             selected_model=selected_model,

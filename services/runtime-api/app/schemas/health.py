@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -7,5 +9,5 @@ class HealthResponse(BaseModel):
     version: str
     environment: str
     inference_engine: str
-    models_loaded: int
-    gpu_available: bool
+    models_configured: int
+    gpu_available: Optional[bool] = None
