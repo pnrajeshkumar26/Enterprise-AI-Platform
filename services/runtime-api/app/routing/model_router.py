@@ -14,8 +14,8 @@ class ModelRouter:
     Deterministic model router for the Enterprise AI Platform.
 
     AUTO mode:
-      low complexity  -> tinyllama
-      high complexity -> phi3
+      low-risk / lightweight / creative requests -> tinyllama
+      factual / technical / complex requests    -> phi3
 
     Manual model selection bypasses this router.
     """
@@ -43,7 +43,7 @@ class ModelRouter:
         "troubleshooting",
     )
 
-    CODE_KEYWORDS = (
+    TECHNICAL_KEYWORDS = (
         "code",
         "script",
         "python",
@@ -66,6 +66,27 @@ class ModelRouter:
         "cuda",
         "inference",
         "llmops",
+        "linux",
+        "aws",
+        "api",
+        "container",
+        "containers",
+        "machine learning",
+        "model",
+    )
+
+    FACTUAL_PATTERNS = (
+        r"\bwhat is\b",
+        r"\bwhat are\b",
+        r"\bdefine\b",
+        r"\bexplain\b",
+        r"\bhow does\b",
+        r"\bhow do\b",
+        r"\bwhy does\b",
+        r"\bwhy do\b",
+        r"\bwhen should\b",
+        r"\bwhat does\b",
+        r"\bdifference between\b",
     )
 
     def route(self, prompt: str) -> RoutingDecision:
@@ -108,7 +129,7 @@ class ModelRouter:
             reasons.append("multi-step request")
 
         # ---------------------------------------------------------
-        # Complexity indicators
+        # Complex reasoning indicators
         # ---------------------------------------------------------
         matched_complex = [
             keyword
@@ -122,31 +143,51 @@ class ModelRouter:
                 f"complexity keyword: {matched_complex[0]}"
             )
 
-        # Additional complexity signal when multiple indicators exist.
         if len(matched_complex) >= 2:
             score += 1
             reasons.append("multiple complexity indicators")
 
         # ---------------------------------------------------------
-        # Technical / code indicators
+        # Technical indicators
         # ---------------------------------------------------------
-        matched_code = [
+        matched_technical = [
             keyword
-            for keyword in self.CODE_KEYWORDS
+            for keyword in self.TECHNICAL_KEYWORDS
             if keyword in text
         ]
 
-        if matched_code:
+        if matched_technical:
             score += 2
             reasons.append(
-                f"technical/code keyword: {matched_code[0]}"
+                f"technical keyword: {matched_technical[0]}"
             )
 
-        # Additional signal for highly technical prompts.
-        if len(matched_code) >= 2:
+        if len(matched_technical) >= 2:
             score += 1
             reasons.append("multiple technical indicators")
 
+        # ---------------------------------------------------------
+        # Factual-question indicators
+        #
+        # A short factual question such as:
+        #   "What is Kubernetes?"
+        # should use Phi-3 even when it is not long.
+        # ---------------------------------------------------------
+        matched_factual = [
+            pattern
+            for pattern in self.FACTUAL_PATTERNS
+            if re.search(pattern, text)
+        ]
+
+        if matched_factual:
+            score += 1
+            reasons.append(
+                f"factual question: {matched_factual[0]}"
+            )
+
+        # ---------------------------------------------------------
+        # Code block
+        # ---------------------------------------------------------
         if "```" in text:
             score += 2
             reasons.append("code block detected")

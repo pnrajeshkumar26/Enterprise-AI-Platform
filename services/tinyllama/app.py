@@ -86,9 +86,13 @@ def generate(request: GenerateRequest):
             {
                 "role": "system",
                 "content": (
-                    "You are a helpful enterprise AI assistant. "
-                    "Answer the user's question directly, clearly, "
-                    "and concisely."
+                    "You are a concise enterprise AI assistant. "
+                    "Answer the user's question directly and clearly. "
+                    "Provide factual information only when reasonably "
+                    "confident. Do not invent facts, definitions, "
+                    "products, people, or technical details. "
+                    "If you are unsure, say that you are unsure. "
+                    "Prefer a short, accurate answer."
                 ),
             },
             {
@@ -97,8 +101,9 @@ def generate(request: GenerateRequest):
             },
         ],
         max_tokens=256,
-        temperature=0.7,
-        top_p=0.95,
+        temperature=0.2,
+        top_p=0.9,
+        repeat_penalty=1.1,
     )
 
     text = (

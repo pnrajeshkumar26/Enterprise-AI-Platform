@@ -7,12 +7,32 @@ sys.path.insert(0, str(ROOT / "services" / "runtime-api"))
 from app.routing.model_router import model_router
 
 
-def test_simple_request_routes_to_tinyllama():
+def test_simple_factual_kubernetes_request_routes_to_phi3():
+    decision = model_router.route("What is Kubernetes?")
+
+    assert decision.selected_model == "phi3"
+
+
+def test_simple_factual_docker_request_routes_to_phi3():
+    decision = model_router.route("What is Docker?")
+
+    assert decision.selected_model == "phi3"
+
+
+def test_casual_request_routes_to_tinyllama():
     decision = model_router.route(
-        "What is Kubernetes?"
+        "Tell me a short joke about software engineers."
     )
 
     assert decision.selected_model == "tinyllama"
+
+
+def test_prometheus_question_routes_to_phi3():
+    decision = model_router.route(
+        "Explain why Prometheus is useful in LLMOps."
+    )
+
+    assert decision.selected_model == "phi3"
 
 
 def test_complex_llmops_request_routes_to_phi3():

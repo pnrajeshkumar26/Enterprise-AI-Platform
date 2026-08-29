@@ -1,36 +1,34 @@
 from datetime import datetime
 
-from app.models.model_registry import get_model
+from app.core.runtime_metrics import (
+    LLM_MODELS_CONFIGURED,
+    LLM_RUNTIME_UP,
+)
+from app.models.model_registry import list_models
 
 
 class MetricsService:
-    """Provides runtime metrics."""
+    """
+    Provides human-readable runtime metrics.
+
+    Prometheus-native metrics are exposed separately at /metrics.
+    """
 
     def __init__(self):
         self.started_at = datetime.utcnow()
-        self.total_requests = 0
 
-    def increment_requests(self):
-        self.total_requests += 1
+        # Initialize runtime-level Prometheus gauges immediately.
+        LLM_MODELS_CONFIGURED.set(len(list_models()))
+        LLM_RUNTIME_UP.set(1)
 
     def get_metrics(self):
-        model = get_model("TinyLlama")
-
-        uptime = (
-            datetime.utcnow() - self.started_at
-        ).total_seconds()
-
         return {
             "status": "running",
-            "engine": "llama.cpp",
-            "model": model.name,
-            "provider": model.provider,
-            "quantization": model.quantization,
-            "context_length": model.context_length,
-            "cached": True,
-            "enabled": model.enabled,
-            "uptime_seconds": int(uptime),
-            "total_requests": self.total_requests,
+            "engine": "orchestrator",
+            "models_configured": len(list_models()),
+            "uptime_seconds": int(
+                (datetime.utcnow() - self.started_at).total_seconds()
+            ),
         }
 
 

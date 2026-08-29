@@ -1,0 +1,302 @@
+apiVersion: 1
+groups:
+    - orgId: 1
+      name: Enterprise AI Runtime
+      folder: "Enterprise AI"
+      interval: 30s
+      rules:
+        - uid: dfwmv3vkb5ds0e
+          title: Runtime API Down
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: prometheus
+              model:
+                editorMode: code
+                expr: up{job="runtime-api"}
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 2m
+          keepFiringFor: 30s
+          annotations:
+            description: |-
+                The Runtime API Prometheus target has been below 1 for at least 2 minutes.
+                Check the enterprise-runtime-api container, application logs, and backend availability.
+            summary: Enterprise AI Runtime API is unavailable.
+          labels:
+            service: runtime-api
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: empty
+        - uid: cfwnfs9wblg5cf
+          title: DCGM Exporter Down
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: prometheus
+              model:
+                editorMode: code
+                expr: up{job="dcgm"}
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 2m
+          keepFiringFor: 30s
+          annotations:
+            description: |-
+                Prometheus cannot scrape the NVIDIA DCGM exporter for at least 2 minutes.
+                Check the enterprise-dcgm-exporter container and NVIDIA GPU access.
+            summary: NVIDIA DCGM exporter is unavailable.
+          labels:
+            service: dcgm
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: empty
+        - uid: ffwng37b2vytce
+          title: High LLM Failure Rate
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: prometheus
+              model:
+                editorMode: code
+                expr: "100 *\r\n(\r\n  sum(rate(llm_generation_failures_total[5m]))\r\n  or vector(0)\r\n)\r\n/\r\nclamp_min(\r\n  sum(rate(llm_requests_total[5m])),\r\n  1e-9\r\n)"
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 5
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 5m
+          keepFiringFor: 30s
+          annotations:
+            description: |-
+                More than 5% of LLM generation requests have failed over the evaluation window.
+                Check Runtime API logs and TinyLlama/vLLM backend health.
+            summary: LLM generation failure rate is high.
+          labels:
+            service: runtime-api
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: empty
+        - uid: bfwng8tait3b4e
+          title: High LLM P95 Latency
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: prometheus
+              model:
+                editorMode: code
+                expr: "histogram_quantile(\r\n  0.95,\r\n  sum by (le, selected_model) (\r\n    rate(llm_request_duration_seconds_bucket[5m])\r\n  )\r\n)"
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 10
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 5m
+          keepFiringFor: 30s
+          annotations:
+            description: |-
+                The 95th percentile LLM generation latency has exceeded 10 seconds.
+                Check backend performance, GPU utilization, GPU memory pressure and request load.
+            summary: LLM P95 latency is above 10 seconds.
+          labels:
+            service: runtime-api
+            severity: warning
+          isPaused: false
+          notification_settings:
+            receiver: empty
+        - uid: cfwngi2nyyfb4d
+          title: GPU Memory Critical
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: prometheus
+              model:
+                editorMode: code
+                expr: "100 *\r\nDCGM_FI_DEV_FB_USED\r\n/\r\n(\r\n  DCGM_FI_DEV_FB_USED\r\n  +\r\n  DCGM_FI_DEV_FB_FREE\r\n)"
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 95
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 2m
+          keepFiringFor: 30s
+          annotations:
+            description: |-
+                GPU framebuffer memory utilization has remained above 95% for at least 2 minutes.
+                Check vLLM memory allocation, model residency and GPU memory pressure.
+            summary: Tesla T4 GPU memory usage is critical.
+          labels:
+            service: gpu
+            severity: critical
+          isPaused: false
+          notification_settings:
+            receiver: empty

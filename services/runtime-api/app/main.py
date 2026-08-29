@@ -8,6 +8,7 @@ from starlette import status
 from app.core.config import settings
 from app.routers import generate, health, metrics, models
 from app.routers.runtime import router as runtime_router
+from app.routers.metrics import prometheus_app
 
 logging.basicConfig(
     level=logging.INFO,
@@ -71,6 +72,7 @@ app.include_router(models.router)
 app.include_router(generate.router)
 app.include_router(runtime_router)
 app.include_router(metrics.router)
+app.mount('/metrics', prometheus_app)
 
 
 @app.get("/", tags=["Home"])

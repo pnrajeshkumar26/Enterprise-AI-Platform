@@ -1,3 +1,4 @@
+import os
 import time
 import requests
 import streamlit as st
@@ -10,7 +11,10 @@ st.set_page_config(
 )
 
 
-RUNTIME_API_URL = "http://127.0.0.1:8001"
+RUNTIME_API_URL = os.getenv(
+    "RUNTIME_API_URL",
+    "http://127.0.0.1:8001",
+)
 
 
 st.title("🤖 Enterprise AI Platform")

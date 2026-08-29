@@ -1,0 +1,23 @@
+services:
+
+  streamlit:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+
+    container_name: enterprise-streamlit
+
+    restart: unless-stopped
+
+    ports:
+      - "8501:8501"
+
+    environment:
+      RUNTIME_API_URL: http://enterprise-runtime-api:8000
+
+    networks:
+      - enterprise-ai-net
+
+networks:
+  enterprise-ai-net:
+    external: true
