@@ -1,4 +1,4 @@
-# Enterprise AI Platform â€” Practical LLMOps Reference Architecture
+# Enterprise AI Platform & Practical LLMOps Reference Architecture
 
 [![CI](https://github.com/pnrajeshkumar26/Enterprise-AI-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/pnrajeshkumar26/Enterprise-AI-Platform/actions/workflows/ci.yml)
 
@@ -197,17 +197,17 @@ The main observability configuration is under:
 
 ```text
 deployment/observability/
-â”œâ”€â”€ prometheus/
-â”‚   â”œâ”€â”€ docker-compose.yml
-â”‚   â””â”€â”€ prometheus.yml
-â””â”€â”€ grafana/
-    â”œâ”€â”€ docker-compose.yml
-    â”œâ”€â”€ dashboards/
-    â”‚   â””â”€â”€ enterprise-ai-llmops.json
-    â””â”€â”€ provisioning/
-        â”œâ”€â”€ alerting/
-        â”œâ”€â”€ dashboards/
-        â””â”€â”€ datasources/
+           prometheus/
+             docker-compose.yml
+             prometheus.yml
+           grafana/
+             docker-compose.yml
+             dashboards/
+               enterprise-ai-llmops.json
+           provisioning/
+             alerting/
+             dashboards/
+             datasources/
 ```
 
 The validated scrape jobs are:
@@ -274,21 +274,21 @@ The repository also contains GitHub Actions workflow validation.
 
 ```text
 .
-â”œâ”€â”€ frontend/                       # Streamlit application
-â”œâ”€â”€ services/
-â”‚   â”œâ”€â”€ runtime-api/                # FastAPI orchestration service
-â”‚   â””â”€â”€ tinyllama/                  # llama.cpp TinyLlama backend
-â”œâ”€â”€ deployment/
-â”‚   â”œâ”€â”€ frontend/                   # Streamlit Compose deployment
-â”‚   â””â”€â”€ observability/              # Prometheus, Grafana and DCGM config
-â”œâ”€â”€ tests/                           # Automated tests
-â”œâ”€â”€ docs/
-â”‚   â”œâ”€â”€ architecture/              # System and observability architecture
-â”‚   â”œâ”€â”€ llmops/                    # Routing, metrics and quality guardrails
-â”‚   â”œâ”€â”€ operations/                # Deployment and troubleshooting
-â”‚   â””â”€â”€ interview/                 # Interview and learning notes
-â”œâ”€â”€ .github/workflows/              # CI/CD workflows
-â””â”€â”€ README.md
+frontend/                    # Streamlit application
+services/
+runtime-api/                # FastAPI orchestration service
+tinyllama/                  # llama.cpp TinyLlama backend
+deployment/
+frontend/                   # Streamlit Compose deployment
+observability/              # Prometheus, Grafana and DCGM config
+tests/                      # Automated tests
+docs/
+architecture/              # System and observability architecture
+llmops/                    # Routing, metrics and quality guardrails
+operations/                # Deployment and troubleshooting
+interview/                 # Interview and learning notes
+.github/workflows/         # CI/CD workflows
+README.md
 ```
 
 ## Quick start
@@ -405,25 +405,25 @@ A useful way to explore the project is to follow the platform in this order:
 
 ```text
 LLM inference
-    â†“
+    †
 Runtime API
-    â†“
+    +
 Model routing
-    â†“
+    †
 Containerization
-    â†“
+    †
 GPU operations
-    â†“
+    †
 Metrics
-    â†“
+    †
 Observability
-    â†“
+    †
 Alerting
-    â†“
+    †
 Quality guardrails
-    â†“
+    †
 CI/CD
-    â†“
+    †
 Kubernetes evolution
 ```
 
