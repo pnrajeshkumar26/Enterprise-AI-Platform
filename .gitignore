@@ -225,3 +225,32 @@ models/
 
 # Local Streamlit virtual environment
 streamlit-env/
+
+# ============================================================
+# Public repository hygiene
+# ============================================================
+
+# Local development environments
+gpu-env/
+streamlit-env/
+
+# Development backup snapshots
+*.before-*
+*.pre-docker-gpu
+*.bak
+*.bak.*
+*.backup
+*.backup.*
+
+# Local temporary artifacts
+*.tmp
+*.swp
+*~
+
+# Local infrastructure/runtime artifacts
+nvidia-container-runtime
+
+# Local Kubernetes/GPU experiment artifacts
+kind-*.bak*
+nvidia-device-plugin-kind.yaml
+nvidia-runtimeclass.yaml

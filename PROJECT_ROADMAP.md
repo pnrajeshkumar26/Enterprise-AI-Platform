@@ -1,70 +1,129 @@
 # Enterprise AI Platform Roadmap
 
-## Phase 0
+This roadmap tracks the evolution of the project from a foundation-level AI platform into a practical LLMOps reference architecture.
 
-- Project Planning
-- Repository Setup
-- Documentation
-- Architecture
+## Phase 0 — Foundation ✅
 
----
+- Project planning
+- Repository setup
+- Architecture definition
+- Documentation baseline
+- Runtime API foundation
 
-## Phase 1
+## Phase 1 — Runtime & Model Serving ✅
 
-Enterprise Runtime Platform
+- FastAPI Runtime API
+- OpenAI-compatible inference integration
+- TinyLlama inference
+- llama.cpp backend
+- Phi-3 inference
+- vLLM backend
 
-- FastAPI
-- OpenAI Compatible API
-- vLLM
-- llama.cpp
-- TGI
+## Phase 2 — Intelligent Model Routing ✅
 
----
+- Manual model selection
+- Automatic routing
+- Request-complexity signals
+- Technical workload detection
+- Routing decision metrics
 
-## Phase 2
+## Phase 3 — GPU Inference & Lifecycle ✅
 
-Enterprise AI Lifecycle
+- NVIDIA GPU enablement
+- NVIDIA Container Runtime
+- GPU-backed inference
+- TinyLlama GPU serving
+- Phi-3 GPU serving
+- Backend health monitoring
+- Restart/recovery validation
 
-- Dataset
-- Tokenization
-- LoRA
-- QLoRA
-- Trainer API
-- Evaluation
+## Phase 4 — Containerization ✅
 
----
+- Runtime API containerization
+- TinyLlama containerization
+- vLLM containerization
+- Streamlit containerization
+- Docker network service discovery
+- Restart policies
+- EC2 restart recovery
 
-## Phase 3
+## Phase 5 — LLMOps Observability ✅
 
-Deployment
+- Prometheus metrics
+- Runtime application metrics
+- NVIDIA DCGM Exporter
+- GPU telemetry
+- Grafana dashboards
+- Grafana alerting
+- Runtime health monitoring
+- GPU memory monitoring
+- LLM latency monitoring
+- LLM failure-rate monitoring
 
-- Docker
-- Docker Compose
-- Kubernetes
-- Helm
+## Phase 6 — Response Quality ✅
 
----
+- Enterprise terminology grounding
+- Conservative generation settings
+- Deterministic response-quality guard
+- Bounded corrective regeneration
+- Quality regression tests
 
-## Phase 4
+## Phase 7 — CI/CD & Release Engineering ✅
 
+- Automated pytest execution
+- GitHub Actions CI
+- Runtime API container build
+- ECR image delivery
+- Release tagging
+- Public repository documentation
+
+## Phase 8 — Kubernetes Evolution 🔄
+
+Planned:
+
+- Kubernetes-native application deployment
+- Helm charts
+- GPU scheduling
+- model-serving lifecycle management
+- Kubernetes-native observability
+
+## Phase 9 — Advanced LLMOps 🔄
+
+Planned:
+
+- formal model evaluation
+- RAG / retrieval grounding
+- benchmark automation
+- token usage telemetry
+- cost visibility
+- distributed tracing
+- advanced routing policies
+- inference autoscaling
+- model registry integration
+- stronger API security
+- production SLO/SLA practices
+
+## Long-Term Direction
+
+The project is evolving through:
+
+```text
+LLM inference
+      ↓
+Model serving
+      ↓
+Model routing
+      ↓
+GPU lifecycle
+      ↓
+Containerization
+      ↓
 Observability
-
-- Prometheus
-- Grafana
-- Loki
-
----
-
-## Phase 5
-
+      ↓
+Quality guardrails
+      ↓
 CI/CD
-
-- GitHub Actions
-- Automated Testing
-- Release Pipeline
-
----
-
-## Final Release
-
-Enterprise AI Platform v1.0
+      ↓
+Kubernetes
+      ↓
+Advanced LLMOps
