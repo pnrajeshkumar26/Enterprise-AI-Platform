@@ -111,8 +111,28 @@ def generate(request: GenerateRequest):
         .strip()
     )
 
+    usage = response.get("usage", {})
+
+    prompt_tokens = int(
+        usage.get("prompt_tokens", 0)
+    )
+    completion_tokens = int(
+        usage.get("completion_tokens", 0)
+    )
+    total_tokens = int(
+        usage.get(
+            "total_tokens",
+            prompt_tokens + completion_tokens,
+        )
+    )
+
     return {
         "status": "success",
         "model": "TinyLlama",
         "response": text,
+        "usage": {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+        },
     }

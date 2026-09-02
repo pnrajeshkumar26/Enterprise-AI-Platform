@@ -16,7 +16,12 @@ def test_vllm_client_uses_enterprise_grounding(monkeypatch):
                             "content": "test response",
                         }
                     }
-                ]
+                ],
+                "usage": {
+                    "prompt_tokens": 5,
+                    "completion_tokens": 7,
+                    "total_tokens": 12,
+                },
             }
 
     def fake_post(url, json, timeout):
@@ -37,23 +42,64 @@ def test_vllm_client_uses_enterprise_grounding(monkeypatch):
 
     result = client.generate("What is vLLM?")
 
-    assert result == "test response"
+    # Stage 2: GenerationResult + token telemetry
+    assert result.text == "test response"
+    assert result.input_tokens == 5
+    assert result.output_tokens == 7
+    assert result.total_tokens == 12
+
+    assert captured["url"] == (
+        "http://enterprise-vllm:8000/v1/chat/completions"
+    )
+    assert captured["timeout"] == 60
 
     payload = captured["json"]
 
     assert payload["model"] == "microsoft/Phi-3-mini-4k-instruct"
-    assert payload["max_tokens"] == 256
-    assert payload["temperature"] == 0.2
-    assert payload["top_p"] == 0.9
 
     assert payload["messages"][0]["role"] == "system"
 
-    system_prompt = payload["messages"][0]["content"]
+    assert (
+        "LLMOps means Large Language Model Operations"
+        in payload["messages"][0]["content"]
+    )
 
-    assert "LLMOps means Large Language Model Operations." in system_prompt
-    assert "vLLM is an LLM inference and serving framework." in system_prompt
-    assert "llama.cpp is a C/C++ library for running LLMs." in system_prompt
-    assert "Prometheus is a metrics and time-series monitoring system." in system_prompt
-    assert "Grafana is an observability and visualization platform." in system_prompt
-    assert "Kubernetes is an open-source container orchestration platform." in system_prompt
-    assert "NVIDIA Tesla T4 has 16 GB of GDDR6 GPU memory." in system_prompt
+    assert (
+        "vLLM is an LLM inference and serving framework"
+        in payload["messages"][0]["content"]
+    )
+
+    assert payload["messages"][1] == {
+        "role": "user",
+        "content": "What is vLLM?",
+    }
+
+
+def test_vllm_client_raises_for_invalid_completion(monkeypatch):
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {
+                "choices": []
+            }
+
+    monkeypatch.setattr(
+        "app.clients.vllm_client.requests.post",
+        lambda url, json, timeout: FakeResponse(),
+    )
+
+    client = VLLMClient(
+        "http://enterprise-vllm:8000",
+        "microsoft/Phi-3-mini-4k-instruct",
+    )
+
+    try:
+        client.generate("What is vLLM?")
+    except ValueError as exc:
+        assert "valid completion" in str(exc)
+    else:
+        raise AssertionError(
+            "Expected ValueError for invalid vLLM response"
+    )

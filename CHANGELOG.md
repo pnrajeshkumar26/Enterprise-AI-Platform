@@ -1,5 +1,29 @@
 # Changelog
 
+## [Sprint 14 — Stage 2] — Token Telemetry
+
+### Added
+
+- Added normalized `GenerationResult` for backend generation metadata.
+- Added exact token usage extraction from vLLM responses.
+- Extended TinyLlama responses with prompt, completion, and total token usage.
+- Updated Runtime API generation flow to normalize token telemetry across backends.
+- Added Prometheus counters:
+  - `llm_input_tokens_total`
+  - `llm_output_tokens_total`
+  - `llm_tokens_total`
+- Updated vLLM client tests for the new `GenerationResult` contract.
+
+### Validation
+
+- Runtime API image: `enterprise-runtime-api:3.12`
+- TinyLlama image: `enterprise-tinyllama:1.3`
+- Automated tests: `14 passed`
+- Live TinyLlama, Phi-3, and automatic routing requests validated.
+- Prometheus token counters validated for both models.
+
+---
+
 All notable changes to this project will be documented in this file.
 
 ## [v0.1.0] - Foundation

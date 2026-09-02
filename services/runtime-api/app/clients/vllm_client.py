@@ -3,6 +3,8 @@ from typing import Any
 
 import requests
 
+from app.core.generation_result import GenerationResult
+
 logger = logging.getLogger(__name__)
 
 
@@ -12,6 +14,10 @@ class VLLMClient:
 
     The client applies a compact verified enterprise context for the
     platform's core technologies to reduce terminology hallucination.
+
+    Stage 2:
+      - preserves vLLM token usage metadata
+      - returns a normalized GenerationResult
     """
 
     SYSTEM_PROMPT = (
@@ -48,7 +54,7 @@ class VLLMClient:
         prompt: str,
         max_tokens: int = 256,
         temperature: float = 0.2,
-    ) -> str:
+    ) -> GenerationResult:
 
         system_prompt = (
             f"{self.SYSTEM_PROMPT} "
@@ -88,9 +94,36 @@ class VLLMClient:
         data: dict[str, Any] = response.json()
 
         try:
-            return data["choices"][0]["message"]["content"].strip()
-        except (KeyError, IndexError, TypeError) as exc:
+            text = (
+                data["choices"][0]["message"]["content"]
+                .strip()
+            )
+
+            usage = data.get("usage") or {}
+
+            input_tokens = int(
+                usage.get("prompt_tokens", 0)
+            )
+            output_tokens = int(
+                usage.get("completion_tokens", 0)
+            )
+            total_tokens = int(
+                usage.get(
+                    "total_tokens",
+                    input_tokens + output_tokens,
+                )
+            )
+
+            return GenerationResult(
+                text=text,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens,
+            )
+
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
             logger.error("Unexpected vLLM response: %s", data)
             raise ValueError(
-                "vLLM response did not contain a valid completion"
+                "vLLM response did not contain a valid completion "
+                "and token usage"
             ) from exc

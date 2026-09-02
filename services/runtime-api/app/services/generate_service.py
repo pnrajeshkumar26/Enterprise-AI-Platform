@@ -6,16 +6,20 @@ import requests
 
 from app.clients.vllm_client import VLLMClient
 from app.core.config import settings
+from app.core.generation_result import GenerationResult
 from app.core.runtime_metrics import (
     LLM_BACKEND_UP,
     LLM_GENERATION_DURATION_SECONDS,
     LLM_GENERATION_FAILURES_TOTAL,
+    LLM_INPUT_TOKENS_TOTAL,
+    LLM_OUTPUT_TOKENS_TOTAL,
     LLM_REQUESTS_TOTAL,
     LLM_ROUTING_DECISIONS_TOTAL,
+    LLM_TOKENS_TOTAL,
 )
+from app.gateway.gateway import llm_gateway
 from app.models.model_registry import get_model
 from app.quality.response_guard import response_guard
-from app.routing.model_router import model_router
 from app.schemas.generate import GenerateResponse
 
 logger = logging.getLogger(__name__)
@@ -28,7 +32,7 @@ class GenerateService:
     Modes:
       tinyllama -> TinyLlama backend
       phi3      -> Phi-3/vLLM backend
-      auto      -> ModelRouter selects a backend
+      auto      -> LLM Gateway selects a backend
 
     Runtime API itself does not run llama.cpp.
     It orchestrates the GPU backend and calls the backend over HTTP.
@@ -39,11 +43,18 @@ class GenerateService:
       - generation failures
       - request latency
       - backend health
+      - input/output/total token counts
 
     Quality protection:
       - Phi-3 responses pass through a narrow deterministic terminology
         guard.
       - At most one corrective regeneration is attempted.
+
+    Gateway:
+      - request context normalization
+      - request ID generation
+      - existing model-router decision
+      - explainable routing metadata
     """
 
     TINYLLAMA_URL = os.getenv(
@@ -81,7 +92,10 @@ class GenerateService:
             self.VLLM_URL,
         )
 
-    def _generate_tinyllama(self, prompt: str) -> str:
+    def _generate_tinyllama(
+        self,
+        prompt: str,
+    ) -> GenerationResult:
         try:
             response = self.http.post(
                 f"{self.TINYLLAMA_URL}/generate",
@@ -110,11 +124,33 @@ class GenerateService:
                     f"TinyLlama backend returned an error: {data}"
                 )
 
+            usage = data.get("usage") or {}
+
+            input_tokens = int(
+                usage.get("prompt_tokens", 0)
+            )
+            output_tokens = int(
+                usage.get("completion_tokens", 0)
+            )
+            total_tokens = int(
+                usage.get(
+                    "total_tokens",
+                    input_tokens + output_tokens,
+                )
+            )
+
+            result = GenerationResult(
+                text=data.get("response", "").strip(),
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens,
+            )
+
             LLM_BACKEND_UP.labels(
                 backend="tinyllama"
             ).set(1)
 
-            return data.get("response", "")
+            return result
 
         except Exception:
             LLM_BACKEND_UP.labels(
@@ -122,11 +158,14 @@ class GenerateService:
             ).set(0)
             raise
 
-    def _generate_phi3(self, prompt: str) -> str:
+    def _generate_phi3(
+        self,
+        prompt: str,
+    ) -> GenerationResult:
         try:
             result = self.vllm_client.generate(prompt)
 
-            guard = response_guard.validate(result)
+            guard = response_guard.validate(result.text)
 
             if guard.valid:
                 LLM_BACKEND_UP.labels(
@@ -151,7 +190,7 @@ class GenerateService:
                 temperature=0.1,
             )
 
-            retry_guard = response_guard.validate(result)
+            retry_guard = response_guard.validate(result.text)
 
             if not retry_guard.valid:
                 raise RuntimeError(
@@ -171,6 +210,31 @@ class GenerateService:
             ).set(0)
             raise
 
+    @staticmethod
+    def _record_token_metrics(
+        selected_model: str,
+        result: GenerationResult,
+    ) -> None:
+        LLM_INPUT_TOKENS_TOTAL.labels(
+            selected_model=selected_model
+        ).inc(result.input_tokens)
+
+        LLM_OUTPUT_TOKENS_TOTAL.labels(
+            selected_model=selected_model
+        ).inc(result.output_tokens)
+
+        LLM_TOKENS_TOTAL.labels(
+            selected_model=selected_model
+        ).inc(result.total_tokens)
+
+        logger.info(
+            "Token usage: model=%s input=%d output=%d total=%d",
+            selected_model,
+            result.input_tokens,
+            result.output_tokens,
+            result.total_tokens,
+        )
+
     def generate(
         self,
         model_name: str,
@@ -186,27 +250,35 @@ class GenerateService:
 
         try:
             # -------------------------------------------------------
-            # Model routing
+            # Gateway routing
             # -------------------------------------------------------
-            if requested_model == "auto":
-                decision = model_router.route(prompt)
-                selected_model = decision.selected_model
+            context = llm_gateway.create_context(
+                requested_model=requested_model,
+                prompt=prompt,
+            )
 
+            decision = llm_gateway.decide(context)
+            selected_model = decision.selected_model
+
+            if requested_model == "auto":
                 LLM_ROUTING_DECISIONS_TOTAL.labels(
                     requested_model="auto",
                     selected_model=selected_model,
                 ).inc()
 
                 logger.info(
-                    "AUTO routing: model=%s score=%s reason=%s",
+                    "GATEWAY routing: request_id=%s model=%s score=%s reason=%s",
+                    decision.request_id,
                     selected_model,
-                    decision.score,
-                    decision.reason,
+                    decision.routing_score,
+                    decision.routing_reason,
                 )
-
             else:
-                decision = None
-                selected_model = requested_model
+                logger.info(
+                    "GATEWAY explicit model: request_id=%s model=%s",
+                    decision.request_id,
+                    selected_model,
+                )
 
             # -------------------------------------------------------
             # Model validation
@@ -227,14 +299,12 @@ class GenerateService:
             # Inference
             # -------------------------------------------------------
             if selected_model == "tinyllama":
-
-                generated_text = self._generate_tinyllama(
+                result = self._generate_tinyllama(
                     prompt
                 )
 
             elif selected_model == "phi3":
-
-                generated_text = self._generate_phi3(
+                result = self._generate_phi3(
                     prompt
                 )
 
@@ -243,6 +313,14 @@ class GenerateService:
                     f"No inference engine configured for "
                     f"'{selected_model}'"
                 )
+
+            # -------------------------------------------------------
+            # Token metrics
+            # -------------------------------------------------------
+            self._record_token_metrics(
+                selected_model,
+                result,
+            )
 
             # -------------------------------------------------------
             # Success metrics
@@ -261,7 +339,8 @@ class GenerateService:
 
             logger.info(
                 "Generation completed: "
-                "requested=%s selected=%s duration=%.3fs",
+                "request_id=%s requested=%s selected=%s duration=%.3fs",
+                decision.request_id,
                 requested_model,
                 selected_model,
                 duration,
@@ -269,7 +348,7 @@ class GenerateService:
 
             return GenerateResponse(
                 model=model.name,
-                response=generated_text,
+                response=result.text,
                 status="success",
             )
 
@@ -297,7 +376,12 @@ class GenerateService:
 
             logger.exception(
                 "Generation failed: "
-                "requested=%s selected=%s duration=%.3fs",
+                "request_id=%s requested=%s selected=%s duration=%.3fs",
+                (
+                    decision.request_id
+                    if "decision" in locals()
+                    else "unavailable"
+                ),
                 requested_model,
                 failure_model,
                 duration,

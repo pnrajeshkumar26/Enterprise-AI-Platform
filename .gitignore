@@ -254,3 +254,4 @@ nvidia-container-runtime
 kind-*.bak*
 nvidia-device-plugin-kind.yaml
 nvidia-runtimeclass.yaml
+*_bkp
