@@ -2,6 +2,7 @@ import uuid
 
 from app.gateway.context import GatewayRequestContext
 from app.gateway.decision import GatewayDecision
+from app.gateway.latency import latency_tracker
 from app.routing.model_router import model_router
 
 
@@ -14,10 +15,12 @@ class LLMGateway:
       - invoke the existing model router
       - produce an explainable gateway decision
 
+    Stage 4 responsibilities:
+      - read historical latency state before routing
+      - attach latency signals to the gateway decision
+
     Future stages will add:
-      - token telemetry
-      - cost estimation
-      - latency signals
+      - cost-aware routing
       - GPU/resource pressure
       - multi-signal routing policy
     """
@@ -40,8 +43,25 @@ class LLMGateway:
         context: GatewayRequestContext,
     ) -> GatewayDecision:
 
+        # -----------------------------------------------------------
+        # Historical latency state available before routing
+        # -----------------------------------------------------------
+        tinyllama_avg_latency = (
+            latency_tracker.average_latency("tinyllama")
+        )
+
+        phi3_avg_latency = (
+            latency_tracker.average_latency("phi3")
+        )
+
         if context.requested_model == "auto":
             routing = model_router.route(context.prompt)
+
+            routing_reasons = tuple(
+                reason.strip()
+                for reason in routing.reason.split(",")
+                if reason.strip()
+            )
 
             return GatewayDecision(
                 request_id=context.request_id,
@@ -49,11 +69,9 @@ class LLMGateway:
                 selected_model=routing.selected_model,
                 routing_score=routing.score,
                 routing_reason=routing.reason,
-                routing_reasons=tuple(
-                    reason.strip()
-                    for reason in routing.reason.split(",")
-                    if reason.strip()
-                ),
+                routing_reasons=routing_reasons,
+                tinyllama_avg_latency=tinyllama_avg_latency,
+                phi3_avg_latency=phi3_avg_latency,
             )
 
         return GatewayDecision(
@@ -63,6 +81,8 @@ class LLMGateway:
             routing_score=0,
             routing_reason="Explicit model requested",
             routing_reasons=("explicit model requested",),
+            tinyllama_avg_latency=tinyllama_avg_latency,
+            phi3_avg_latency=phi3_avg_latency,
         )
 
 

@@ -64,6 +64,18 @@ LLM_TOKENS_TOTAL = Counter(
     ],
 )
 
+# -------------------------------------------------------------------
+# Cost telemetry
+# -------------------------------------------------------------------
+
+LLM_ESTIMATED_COST_USD_TOTAL = Counter(
+    "llm_estimated_cost_usd_total",
+    "Estimated self-hosted inference compute cost in USD.",
+    [
+       "selected_model",
+    ],
+)
+
 
 # -------------------------------------------------------------------
 # Routing metrics

@@ -1,16 +1,15 @@
 from dataclasses import dataclass
-from typing import Tuple
 
 
 @dataclass(frozen=True)
 class GatewayDecision:
-    """
-    Explainable routing decision produced by the LLM Gateway.
-    """
-
     request_id: str
     requested_model: str
     selected_model: str
     routing_score: int
     routing_reason: str
-    routing_reasons: Tuple[str, ...]
+    routing_reasons: tuple[str, ...]
+
+    # Historical latency signal observed before routing.
+    tinyllama_avg_latency: float | None = None
+    phi3_avg_latency: float | None = None

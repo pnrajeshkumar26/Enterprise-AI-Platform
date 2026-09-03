@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.generation_result import GenerationResult
 from app.core.runtime_metrics import (
     LLM_BACKEND_UP,
+    LLM_ESTIMATED_COST_USD_TOTAL,
     LLM_GENERATION_DURATION_SECONDS,
     LLM_GENERATION_FAILURES_TOTAL,
     LLM_INPUT_TOKENS_TOTAL,
@@ -17,7 +18,9 @@ from app.core.runtime_metrics import (
     LLM_ROUTING_DECISIONS_TOTAL,
     LLM_TOKENS_TOTAL,
 )
+from app.cost.estimator import CostEstimator
 from app.gateway.gateway import llm_gateway
+from app.gateway.latency import latency_tracker
 from app.models.model_registry import get_model
 from app.quality.response_guard import response_guard
 from app.schemas.generate import GenerateResponse
@@ -44,6 +47,10 @@ class GenerateService:
       - request latency
       - backend health
       - input/output/total token counts
+
+    Cost telemetry:
+      - self-hosted compute cost estimation based on
+        EC2 hourly compute rate and request runtime
 
     Quality protection:
       - Phi-3 responses pass through a narrow deterministic terminology
@@ -86,10 +93,18 @@ class GenerateService:
 
         self.http = requests.Session()
 
+        self.cost_estimator = CostEstimator(
+            instance_type=settings.compute_instance_type,
+            hourly_cost_usd=settings.compute_hourly_cost_usd,
+        )
+
         logger.info(
-            "Runtime API initialized: tinyllama=%s vllm=%s",
+            "Runtime API initialized: tinyllama=%s vllm=%s "
+            "compute_instance=%s hourly_cost_usd=%.6f",
             self.TINYLLAMA_URL,
             self.VLLM_URL,
+            settings.compute_instance_type,
+            settings.compute_hourly_cost_usd,
         )
 
     def _generate_tinyllama(
@@ -315,14 +330,6 @@ class GenerateService:
                 )
 
             # -------------------------------------------------------
-            # Token metrics
-            # -------------------------------------------------------
-            self._record_token_metrics(
-                selected_model,
-                result,
-            )
-
-            # -------------------------------------------------------
             # Success metrics
             # -------------------------------------------------------
             duration = time.perf_counter() - start
@@ -336,6 +343,52 @@ class GenerateService:
             LLM_GENERATION_DURATION_SECONDS.labels(
                 selected_model=selected_model
             ).observe(duration)
+
+            # -------------------------------------------------------
+            # Token telemetry
+            # -------------------------------------------------------
+            self._record_token_metrics(
+                selected_model,
+                result,
+            )
+
+            # -------------------------------------------------------
+            # Latency history
+            # -------------------------------------------------------
+            latency_tracker.record(
+                selected_model,
+                duration,
+            )
+
+            logger.info(
+                "Latency history: model=%s runtime=%.3fs "
+                "rolling_average=%.3fs samples=%d",
+                selected_model,
+                duration,
+                latency_tracker.average_latency(selected_model),
+                latency_tracker.sample_count(selected_model),
+            )
+
+            # -------------------------------------------------------
+            # Cost estimation
+            # -------------------------------------------------------
+            cost_estimate = self.cost_estimator.estimate(duration)
+
+            LLM_ESTIMATED_COST_USD_TOTAL.labels(
+                selected_model=selected_model
+            ).inc(cost_estimate.estimated_cost_usd)
+
+            logger.info(
+                "Cost estimate: request_id=%s model=%s "
+                "instance=%s runtime=%.3fs hourly_cost_usd=%.6f "
+                "estimated_cost_usd=%.9f",
+                decision.request_id,
+                selected_model,
+                cost_estimate.instance_type,
+                cost_estimate.runtime_seconds,
+                cost_estimate.hourly_cost_usd,
+                cost_estimate.estimated_cost_usd,
+            )
 
             logger.info(
                 "Generation completed: "
