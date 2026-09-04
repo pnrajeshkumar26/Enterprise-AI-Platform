@@ -3,6 +3,7 @@ import uuid
 from app.gateway.context import GatewayRequestContext
 from app.gateway.decision import GatewayDecision
 from app.gateway.latency import latency_tracker
+from app.resources.gpu_collector import gpu_resource_collector
 from app.routing.model_router import model_router
 
 
@@ -19,10 +20,14 @@ class LLMGateway:
       - read historical latency state before routing
       - attach latency signals to the gateway decision
 
+    Stage 5 responsibilities:
+      - read current GPU resource state before routing
+      - attach GPU/resource signals to the gateway decision
+
     Future stages will add:
       - cost-aware routing
-      - GPU/resource pressure
       - multi-signal routing policy
+      - explainable scoring based on all signals
     """
 
     def create_context(
@@ -54,6 +59,11 @@ class LLMGateway:
             latency_tracker.average_latency("phi3")
         )
 
+        # -----------------------------------------------------------
+        # Current GPU resource state available before routing
+        # -----------------------------------------------------------
+        gpu_state = gpu_resource_collector.collect()
+
         if context.requested_model == "auto":
             routing = model_router.route(context.prompt)
 
@@ -72,6 +82,16 @@ class LLMGateway:
                 routing_reasons=routing_reasons,
                 tinyllama_avg_latency=tinyllama_avg_latency,
                 phi3_avg_latency=phi3_avg_latency,
+                gpu_name=gpu_state.gpu_name,
+                gpu_utilization_percent=(
+                    gpu_state.gpu_utilization_percent
+                ),
+                gpu_memory_utilization_percent=(
+                    gpu_state.memory_utilization_percent
+                ),
+                gpu_memory_total_mib=gpu_state.memory_total_mib,
+                gpu_memory_used_mib=gpu_state.memory_used_mib,
+                gpu_memory_free_mib=gpu_state.memory_free_mib,
             )
 
         return GatewayDecision(
@@ -83,6 +103,16 @@ class LLMGateway:
             routing_reasons=("explicit model requested",),
             tinyllama_avg_latency=tinyllama_avg_latency,
             phi3_avg_latency=phi3_avg_latency,
+            gpu_name=gpu_state.gpu_name,
+            gpu_utilization_percent=(
+                gpu_state.gpu_utilization_percent
+            ),
+            gpu_memory_utilization_percent=(
+                gpu_state.memory_utilization_percent
+            ),
+            gpu_memory_total_mib=gpu_state.memory_total_mib,
+            gpu_memory_used_mib=gpu_state.memory_used_mib,
+            gpu_memory_free_mib=gpu_state.memory_free_mib,
         )
 
 

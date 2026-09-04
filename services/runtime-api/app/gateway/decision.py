@@ -13,3 +13,11 @@ class GatewayDecision:
     # Historical latency signal observed before routing.
     tinyllama_avg_latency: float | None = None
     phi3_avg_latency: float | None = None
+
+    # Current GPU resource state observed before routing.
+    gpu_name: str | None = None
+    gpu_utilization_percent: float | None = None
+    gpu_memory_utilization_percent: float | None = None
+    gpu_memory_total_mib: float | None = None
+    gpu_memory_used_mib: float | None = None
+    gpu_memory_free_mib: float | None = None
