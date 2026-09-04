@@ -20,6 +20,7 @@ def generate(request: GenerateRequest):
         return generate_service.generate(
             request.model,
             request.prompt,
+            request.max_output_tokens,
         )
 
     except ValueError as e:

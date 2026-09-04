@@ -110,11 +110,15 @@ class GenerateService:
     def _generate_tinyllama(
         self,
         prompt: str,
+        max_output_tokens: int,
     ) -> GenerationResult:
         try:
             response = self.http.post(
                 f"{self.TINYLLAMA_URL}/generate",
-                json={"prompt": prompt},
+                json={
+                    "prompt": prompt,
+                    "max_output_tokens": max_output_tokens,
+                },
                 timeout=360,
             )
 
@@ -176,9 +180,13 @@ class GenerateService:
     def _generate_phi3(
         self,
         prompt: str,
+        max_output_tokens: int,
     ) -> GenerationResult:
         try:
-            result = self.vllm_client.generate(prompt)
+            result = self.vllm_client.generate(
+                prompt,
+                max_tokens=max_output_tokens,
+            )
 
             guard = response_guard.validate(result.text)
 
@@ -199,9 +207,14 @@ class GenerateService:
                 f"User question:\n{prompt}"
             )
 
+            retry_budget = min(
+                max_output_tokens,
+                256,
+            )
+
             result = self.vllm_client.generate(
                 retry_prompt,
-                max_tokens=256,
+                max_tokens=retry_budget,
                 temperature=0.1,
             )
 
@@ -254,6 +267,7 @@ class GenerateService:
         self,
         model_name: str,
         prompt: str,
+        max_output_tokens: int | None = None,
     ) -> GenerateResponse:
 
         requested_model = (
@@ -270,10 +284,13 @@ class GenerateService:
             context = llm_gateway.create_context(
                 requested_model=requested_model,
                 prompt=prompt,
+                requested_output_tokens=max_output_tokens,
             )
 
             decision = llm_gateway.decide(context)
             selected_model = decision.selected_model
+
+            output_budget = decision.output_token_budget
 
             if requested_model == "auto":
                 LLM_ROUTING_DECISIONS_TOTAL.labels(
@@ -315,12 +332,14 @@ class GenerateService:
             # -------------------------------------------------------
             if selected_model == "tinyllama":
                 result = self._generate_tinyllama(
-                    prompt
+                    prompt,
+                    output_budget,
                 )
 
             elif selected_model == "phi3":
                 result = self._generate_phi3(
-                    prompt
+                    prompt,
+                    output_budget,
                 )
 
             else:

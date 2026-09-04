@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from llama_cpp import Llama
 
@@ -28,6 +28,11 @@ llm = None
 
 class GenerateRequest(BaseModel):
     prompt: str
+    max_output_tokens: int = Field(
+        default=512,
+        ge=1,
+        description="Maximum number of tokens to generate.",
+    )
 
 
 @app.on_event("startup")
@@ -77,8 +82,10 @@ def generate(request: GenerateRequest):
         }
 
     logger.info(
-        "Generating response for prompt: %s",
+        "Generating response for prompt: %s "
+        "max_output_tokens=%d",
         request.prompt[:120],
+        request.max_output_tokens,
     )
 
     response = llm.create_chat_completion(
@@ -92,7 +99,7 @@ def generate(request: GenerateRequest):
                     "confident. Do not invent facts, definitions, "
                     "products, people, or technical details. "
                     "If you are unsure, say that you are unsure. "
-                    "Prefer a short, accurate answer."
+                    "Prefer a clear, useful answer."
                 ),
             },
             {
@@ -100,7 +107,7 @@ def generate(request: GenerateRequest):
                 "content": request.prompt,
             },
         ],
-        max_tokens=256,
+        max_tokens=request.max_output_tokens,
         temperature=0.2,
         top_p=0.9,
         repeat_penalty=1.1,
