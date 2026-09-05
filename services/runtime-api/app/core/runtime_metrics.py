@@ -91,6 +91,58 @@ LLM_ROUTING_DECISIONS_TOTAL = Counter(
 )
 
 
+LLM_ROUTING_CAPACITY_OVERRIDES_TOTAL = Counter(
+    "llm_routing_capacity_overrides_total",
+    "Total number of automatic routing decisions overridden by token capacity.",
+    [
+        "from_model",
+        "to_model",
+    ],
+)
+
+
+LLM_ROUTING_CAPACITY_REJECTIONS_TOTAL = Counter(
+    "llm_routing_capacity_rejections_total",
+    "Total number of routing requests rejected because of token capacity.",
+    [
+        "requested_model",
+    ],
+)
+
+
+LLM_ROUTING_SELECTED_MODELS_TOTAL = Counter(
+    "llm_routing_selected_models_total",
+    "Total number of requests by final selected model.",
+    [
+        "selected_model",
+    ],
+)
+
+
+LLM_ROUTING_OUTCOMES_TOTAL = Counter(
+    "llm_routing_outcomes_total",
+    "Total number of routing decisions by outcome.",
+    [
+        "outcome",
+    ],
+)
+
+
+LLM_ROUTING_SCORE = Gauge(
+    "llm_routing_score",
+    "Latest multi-signal routing score by model.",
+    [
+        "model",
+    ],
+)
+
+
+LLM_ROUTING_SCORE_MARGIN = Gauge(
+    "llm_routing_score_margin",
+    "Latest absolute difference between multi-signal model scores.",
+)
+
+
 # -------------------------------------------------------------------
 # Backend health
 # -------------------------------------------------------------------

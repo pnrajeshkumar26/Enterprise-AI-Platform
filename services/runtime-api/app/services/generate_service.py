@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 import time
 
@@ -15,11 +16,18 @@ from app.core.runtime_metrics import (
     LLM_INPUT_TOKENS_TOTAL,
     LLM_OUTPUT_TOKENS_TOTAL,
     LLM_REQUESTS_TOTAL,
+    LLM_ROUTING_CAPACITY_OVERRIDES_TOTAL,
+    LLM_ROUTING_CAPACITY_REJECTIONS_TOTAL,
     LLM_ROUTING_DECISIONS_TOTAL,
+    LLM_ROUTING_OUTCOMES_TOTAL,
+    LLM_ROUTING_SCORE,
+    LLM_ROUTING_SCORE_MARGIN,
+    LLM_ROUTING_SELECTED_MODELS_TOTAL,
     LLM_TOKENS_TOTAL,
 )
 from app.cost.estimator import CostEstimator
 from app.gateway.gateway import llm_gateway
+from app.routing.capacity_router import CapacityRoutingError
 from app.gateway.latency import latency_tracker
 from app.models.model_registry import get_model
 from app.quality.response_guard import response_guard
@@ -267,6 +275,75 @@ class GenerateService:
             result.total_tokens,
         )
 
+    @staticmethod
+    @staticmethod
+    def _record_routing_metrics(
+        requested_model,
+        selected_model,
+        decision,
+    ) -> None:
+        if requested_model == "auto":
+            LLM_ROUTING_DECISIONS_TOTAL.labels(
+                requested_model="auto",
+                selected_model=selected_model,
+            ).inc()
+
+        LLM_ROUTING_SELECTED_MODELS_TOTAL.labels(
+            selected_model=selected_model,
+        ).inc()
+
+        LLM_ROUTING_OUTCOMES_TOTAL.labels(
+            outcome=decision.routing_outcome,
+        ).inc()
+
+        if (
+            decision.routing_outcome == "capacity_override"
+            and decision.capacity_from_model
+            and decision.capacity_to_model
+        ):
+            LLM_ROUTING_CAPACITY_OVERRIDES_TOTAL.labels(
+                from_model=decision.capacity_from_model,
+                to_model=decision.capacity_to_model,
+            ).inc()
+
+        tiny_score = decision.tinyllama_multi_signal_score
+        phi3_score = decision.phi3_multi_signal_score
+
+        if tiny_score is not None and phi3_score is not None:
+            # Prometheus/Grafana should receive finite dashboard values.
+            # A capacity-exceeded model has no usable routing score, so
+            # expose it as 0 and keep the actual capacity condition in the
+            # dedicated capacity override/rejection metrics.
+            safe_tiny_score = (
+                float(tiny_score)
+                if math.isfinite(float(tiny_score))
+                else 0.0
+            )
+            safe_phi3_score = (
+                float(phi3_score)
+                if math.isfinite(float(phi3_score))
+                else 0.0
+            )
+
+            LLM_ROUTING_SCORE.labels(
+                model="tinyllama",
+            ).set(safe_tiny_score)
+
+            LLM_ROUTING_SCORE.labels(
+                model="phi3",
+            ).set(safe_phi3_score)
+
+            # A score margin is meaningful only when both models have
+            # finite scores. Otherwise expose 0 rather than +/-Inf.
+            if math.isfinite(float(tiny_score)) and math.isfinite(float(phi3_score)):
+                margin = abs(
+                    float(tiny_score) - float(phi3_score)
+                )
+            else:
+                margin = 0.0
+
+            LLM_ROUTING_SCORE_MARGIN.set(margin)
+
     def generate(
         self,
         model_name: str,
@@ -294,19 +371,28 @@ class GenerateService:
             decision = llm_gateway.decide(context)
             selected_model = decision.selected_model
 
+            self._record_routing_metrics(
+                requested_model=requested_model,
+                selected_model=selected_model,
+                decision=decision,
+            )
+
             output_budget = decision.output_token_budget
 
-            if requested_model == "auto":
-                LLM_ROUTING_DECISIONS_TOTAL.labels(
-                    requested_model="auto",
-                    selected_model=selected_model,
-                ).inc()
+            self._record_routing_metrics(
+                requested_model=requested_model,
+                selected_model=selected_model,
+                decision=decision,
+            )
 
+            if requested_model == "auto":
                 logger.info(
-                    "GATEWAY routing: request_id=%s model=%s score=%s reason=%s",
+                    "GATEWAY routing: request_id=%s model=%s score=%s "
+                    "outcome=%s reason=%s",
                     decision.request_id,
                     selected_model,
                     decision.routing_score,
+                    decision.routing_outcome,
                     decision.routing_reason,
                 )
             else:
@@ -479,6 +565,46 @@ class GenerateService:
                 status="success",
                 routing=routing_explanation,
             )
+
+        except CapacityRoutingError:
+            # Capacity rejection is a request failure, but not a
+            # generation/inference failure because no backend was invoked.
+            duration = time.perf_counter() - start
+
+            failure_model = selected_model or requested_model
+
+            LLM_ROUTING_CAPACITY_REJECTIONS_TOTAL.labels(
+                requested_model=requested_model,
+            ).inc()
+
+            LLM_ROUTING_OUTCOMES_TOTAL.labels(
+                outcome="capacity_rejected",
+            ).inc()
+
+            LLM_REQUESTS_TOTAL.labels(
+                requested_model=requested_model,
+                selected_model=failure_model,
+                status="failure",
+            ).inc()
+
+            LLM_GENERATION_DURATION_SECONDS.labels(
+                selected_model=failure_model
+            ).observe(duration)
+
+            logger.exception(
+                "Capacity routing rejected request: "
+                "request_id=%s requested=%s selected=%s duration=%.3fs",
+                (
+                    decision.request_id
+                    if "decision" in locals()
+                    else "unavailable"
+                ),
+                requested_model,
+                failure_model,
+                duration,
+            )
+
+            raise
 
         except Exception:
             # -------------------------------------------------------

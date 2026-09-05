@@ -10,6 +10,12 @@ class CapacityRoutingResult:
     selected_model: str
     overridden: bool
     reason: str
+    from_model: str | None = None
+    to_model: str | None = None
+
+
+class CapacityRoutingError(ValueError):
+    """Raised when token capacity prevents safe routing."""
 
 
 class CapacityAwareRouter:
@@ -53,7 +59,7 @@ class CapacityAwareRouter:
         # ---------------------------------------------------------
         if normalized_requested_model != "auto":
             if not selected_capacity.has_capacity:
-                raise ValueError(
+                raise CapacityRoutingError(
                     f"Model '{normalized_base_model}' cannot "
                     f"accommodate the requested input/output budget. "
                     f"Context capacity={selected_capacity.max_context_tokens}, "
@@ -65,6 +71,8 @@ class CapacityAwareRouter:
                 selected_model=normalized_base_model,
                 overridden=False,
                 reason="explicit model has sufficient token capacity",
+                from_model=None,
+                to_model=normalized_base_model,
             )
 
         # ---------------------------------------------------------
@@ -78,6 +86,8 @@ class CapacityAwareRouter:
                 selected_model=normalized_base_model,
                 overridden=False,
                 reason="selected model has sufficient token capacity",
+                from_model=normalized_base_model,
+                to_model=normalized_base_model,
             )
 
         # ---------------------------------------------------------
@@ -103,12 +113,14 @@ class CapacityAwareRouter:
                     "the request; "
                     f"{alternate_model} has sufficient capacity"
                 ),
+                from_model=normalized_base_model,
+                to_model=alternate_model,
             )
 
         # ---------------------------------------------------------
         # Both models cannot safely accommodate the request.
         # ---------------------------------------------------------
-        raise ValueError(
+        raise CapacityRoutingError(
             "Request exceeds available token capacity on both "
             "configured models. Reduce input size or requested "
             "max_output_tokens."

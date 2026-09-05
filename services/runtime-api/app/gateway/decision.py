@@ -13,6 +13,13 @@ class GatewayDecision:
     routing_reason: str
     routing_reasons: tuple[str, ...]
 
+    # Structured routing outcome for metrics and observability.
+    routing_outcome: str = "explicit"
+
+    # Capacity routing source/destination for override telemetry.
+    capacity_from_model: str | None = None
+    capacity_to_model: str | None = None
+
     # Resolved output-token budget for the selected model.
     output_token_budget: int = 0
 

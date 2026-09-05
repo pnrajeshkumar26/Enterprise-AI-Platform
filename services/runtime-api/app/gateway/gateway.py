@@ -119,6 +119,16 @@ class LLMGateway:
 
             selected_model = multi_signal.selected_model
 
+            if capacity_routing.overridden:
+                routing_outcome = "capacity_override"
+            elif (
+                multi_signal.tinyllama_score
+                == multi_signal.phi3_score
+            ):
+                routing_outcome = "tie_base_preserved"
+            else:
+                routing_outcome = "multi_signal"
+
             output_budget = output_budget_policy.resolve(
                 selected_model,
                 context.requested_output_tokens,
@@ -149,6 +159,9 @@ class LLMGateway:
                 routing_score=routing.score,
                 routing_reason=routing_reason,
                 routing_reasons=routing_reasons,
+                routing_outcome=routing_outcome,
+                capacity_from_model=capacity_routing.from_model,
+                capacity_to_model=capacity_routing.to_model,
                 output_token_budget=output_budget,
                 tinyllama_token_capacity=tinyllama_token_capacity,
                 phi3_token_capacity=phi3_token_capacity,
