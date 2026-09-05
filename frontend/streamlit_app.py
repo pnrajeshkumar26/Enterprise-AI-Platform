@@ -151,25 +151,161 @@ if generate:
 
     st.divider()
 
-    col1, col2, col3 = st.columns(3)
+    st.subheader("Request Telemetry")
 
-    with col1:
+    usage = data.get("usage") or {}
+    performance = data.get("performance") or {}
+    cost = data.get("cost") or {}
+    routing = data.get("routing") or {}
+
+    server_latency = performance.get(
+        "latency_seconds",
+        elapsed,
+    )
+
+    telemetry_col1, telemetry_col2, telemetry_col3, telemetry_col4 = (
+        st.columns(4)
+    )
+
+    with telemetry_col1:
         st.metric(
-            "Model",
+            "Selected Model",
             data.get("model", model),
         )
 
-    with col2:
+    with telemetry_col2:
+        st.metric(
+            "Input Tokens",
+            usage.get("input_tokens", "N/A"),
+        )
+
+    with telemetry_col3:
+        st.metric(
+            "Output Tokens",
+            usage.get("output_tokens", "N/A"),
+        )
+
+    with telemetry_col4:
+        st.metric(
+            "Total Tokens",
+            usage.get("total_tokens", "N/A"),
+        )
+
+    telemetry_col5, telemetry_col6, telemetry_col7, telemetry_col8 = (
+        st.columns(4)
+    )
+
+    with telemetry_col5:
+        st.metric(
+            "Latency",
+            f"{server_latency:.3f}s"
+            if isinstance(server_latency, (int, float))
+            else "N/A",
+        )
+
+    with telemetry_col6:
+        estimated_cost = cost.get("estimated_usd")
+        st.metric(
+            "Estimated Cost",
+            f"${estimated_cost:.8f}"
+            if isinstance(estimated_cost, (int, float))
+            else "N/A",
+        )
+
+    with telemetry_col7:
         st.metric(
             "Status",
             data.get("status", "unknown"),
         )
 
-    with col3:
+    with telemetry_col8:
         st.metric(
-            "Latency",
-            f"{elapsed:.2f}s",
+            "Routing",
+            routing.get("selected_model", data.get("model", model)),
         )
+
+    st.subheader("Routing Explanation")
+
+    routing_reason = routing.get("reason")
+    if routing_reason:
+        st.info(routing_reason)
+
+    scores = routing.get("scores") or {}
+    breakdown = routing.get("breakdown") or {}
+
+    if scores:
+        score_col1, score_col2 = st.columns(2)
+
+        with score_col1:
+            st.metric(
+                "TinyLlama Score",
+                scores.get("tinyllama", "N/A"),
+            )
+
+        with score_col2:
+            st.metric(
+                "Phi-3 Score",
+                scores.get("phi3", "N/A"),
+            )
+
+    if breakdown:
+        with st.expander("Routing Score Breakdown"):
+            for model_name in ("tinyllama", "phi3"):
+                model_breakdown = breakdown.get(model_name)
+
+                if not model_breakdown:
+                    continue
+
+                st.markdown(f"**{model_name}**")
+
+                breakdown_col1, breakdown_col2, breakdown_col3, breakdown_col4, breakdown_col5 = (
+                    st.columns(5)
+                )
+
+                with breakdown_col1:
+                    st.metric(
+                        "Base",
+                        model_breakdown.get(
+                            "base_preference",
+                            "N/A",
+                        ),
+                    )
+
+                with breakdown_col2:
+                    st.metric(
+                        "Capacity",
+                        model_breakdown.get(
+                            "capacity",
+                            "N/A",
+                        ),
+                    )
+
+                with breakdown_col3:
+                    st.metric(
+                        "Latency",
+                        model_breakdown.get(
+                            "latency",
+                            "N/A",
+                        ),
+                    )
+
+                with breakdown_col4:
+                    st.metric(
+                        "GPU Pressure",
+                        model_breakdown.get(
+                            "gpu_pressure",
+                            "N/A",
+                        ),
+                    )
+
+                with breakdown_col5:
+                    st.metric(
+                        "Total",
+                        model_breakdown.get(
+                            "total",
+                            "N/A",
+                        ),
+            )
 
 
 # -------------------------------------------------------------------

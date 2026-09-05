@@ -16,6 +16,26 @@ class GenerateRequest(BaseModel):
     )
 
 
+class UsageTelemetry(BaseModel):
+    """Per-request token usage telemetry."""
+
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+
+
+class PerformanceTelemetry(BaseModel):
+    """Per-request performance telemetry."""
+
+    latency_seconds: float
+
+
+class CostTelemetry(BaseModel):
+    """Per-request cost telemetry."""
+
+    estimated_usd: float
+
+
 class RoutingScoreBreakdown(BaseModel):
     """Explainable score contributions for one routed model."""
 
@@ -43,4 +63,7 @@ class GenerateResponse(BaseModel):
     model: str
     response: str
     status: str
+    usage: UsageTelemetry | None = None
+    performance: PerformanceTelemetry | None = None
+    cost: CostTelemetry | None = None
     routing: RoutingExplanation | None = None

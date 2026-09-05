@@ -32,9 +32,12 @@ from app.gateway.latency import latency_tracker
 from app.models.model_registry import get_model
 from app.quality.response_guard import response_guard
 from app.schemas.generate import (
+    CostTelemetry,
     GenerateResponse,
+    PerformanceTelemetry,
     RoutingExplanation,
     RoutingScoreBreakdown,
+    UsageTelemetry,
 )
 
 logger = logging.getLogger(__name__)
@@ -563,6 +566,17 @@ class GenerateService:
                 model=model.name,
                 response=result.text,
                 status="success",
+                usage=UsageTelemetry(
+                    input_tokens=result.input_tokens,
+                    output_tokens=result.output_tokens,
+                    total_tokens=result.total_tokens,
+                ),
+                performance=PerformanceTelemetry(
+                    latency_seconds=duration,
+                ),
+                cost=CostTelemetry(
+                    estimated_usd=cost_estimate.estimated_cost_usd,
+                ),
                 routing=routing_explanation,
             )
 
