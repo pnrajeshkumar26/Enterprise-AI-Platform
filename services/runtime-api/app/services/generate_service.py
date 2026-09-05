@@ -23,7 +23,11 @@ from app.gateway.gateway import llm_gateway
 from app.gateway.latency import latency_tracker
 from app.models.model_registry import get_model
 from app.quality.response_guard import response_guard
-from app.schemas.generate import GenerateResponse
+from app.schemas.generate import (
+    GenerateResponse,
+    RoutingExplanation,
+    RoutingScoreBreakdown,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -418,10 +422,62 @@ class GenerateService:
                 duration,
             )
 
+            routing_scores: dict[str, float] = {}
+            routing_breakdown: dict[str, RoutingScoreBreakdown] = {}
+
+            if (
+                decision.tinyllama_multi_signal_score is not None
+                and decision.phi3_multi_signal_score is not None
+            ):
+                routing_scores = {
+                    "tinyllama": decision.tinyllama_multi_signal_score,
+                    "phi3": decision.phi3_multi_signal_score,
+                }
+
+            if decision.tinyllama_score_breakdown is not None:
+                breakdown = decision.tinyllama_score_breakdown
+                routing_breakdown["tinyllama"] = (
+                    RoutingScoreBreakdown(
+                        base_preference=(
+                            breakdown.base_preference_score
+                        ),
+                        capacity=breakdown.capacity_score,
+                        latency=breakdown.latency_score,
+                        gpu_pressure=(
+                            breakdown.gpu_pressure_score
+                        ),
+                        total=breakdown.total_score,
+                    )
+                )
+
+            if decision.phi3_score_breakdown is not None:
+                breakdown = decision.phi3_score_breakdown
+                routing_breakdown["phi3"] = (
+                    RoutingScoreBreakdown(
+                        base_preference=(
+                            breakdown.base_preference_score
+                        ),
+                        capacity=breakdown.capacity_score,
+                        latency=breakdown.latency_score,
+                        gpu_pressure=(
+                            breakdown.gpu_pressure_score
+                        ),
+                        total=breakdown.total_score,
+                    )
+                )
+
+            routing_explanation = RoutingExplanation(
+                selected_model=selected_model,
+                reason=decision.routing_reason,
+                scores=routing_scores,
+                breakdown=routing_breakdown,
+            )
+
             return GenerateResponse(
                 model=model.name,
                 response=result.text,
                 status="success",
+                routing=routing_explanation,
             )
 
         except Exception:

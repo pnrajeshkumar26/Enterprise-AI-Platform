@@ -13,12 +13,26 @@ class ModelSignalSet:
 
 
 @dataclass(frozen=True)
+class ModelScoreBreakdown:
+    """Explainable score contribution breakdown for one model."""
+
+    model: str
+    base_preference_score: float
+    capacity_score: float
+    latency_score: float
+    gpu_pressure_score: float
+    total_score: float
+
+
+@dataclass(frozen=True)
 class MultiSignalDecision:
-    """Final result of multi-signal scoring."""
+    """Final result of multi-signal scoring with explanation."""
 
     selected_model: str
     tinyllama_score: float
     phi3_score: float
+    tinyllama_breakdown: ModelScoreBreakdown
+    phi3_breakdown: ModelScoreBreakdown
     reason: str
 
 
@@ -41,61 +55,64 @@ class MultiSignalRouter:
         gpu_utilization_percent: float,
         gpu_memory_utilization_percent: float,
         gpu_memory_free_mib: float,
-    ) -> float:
+    ) -> ModelScoreBreakdown:
         if not model.capacity.has_capacity:
-            return float("-inf")
+            return ModelScoreBreakdown(
+                model=model.model,
+                base_preference_score=0.0,
+                capacity_score=float("-inf"),
+                latency_score=0.0,
+                gpu_pressure_score=0.0,
+                total_score=float("-inf"),
+            )
 
-        score = 0.0
-
-        # ---------------------------------------------------------
-        # Base-router preference
-        # ---------------------------------------------------------
+        base_preference_score = 0.0
         if model.model == base_selected_model:
-            score += self.BASE_MODEL_PREFERENCE_SCORE
+            base_preference_score = self.BASE_MODEL_PREFERENCE_SCORE
 
-        # ---------------------------------------------------------
-        # Token capacity
-        # ---------------------------------------------------------
-        score += self.CAPACITY_SCORES.get(
+        capacity_score = self.CAPACITY_SCORES.get(
             model.capacity.status,
             0.0,
         )
 
-        # ---------------------------------------------------------
-        # Historical latency
-        #
-        # Faster recent model gets a relative advantage.
-        # No penalty is applied when history is unavailable.
-        # ---------------------------------------------------------
+        latency_score = 0.0
         if (
             model.average_latency is not None
             and peer.average_latency is not None
         ):
             if model.average_latency < peer.average_latency:
-                score += 3.0
+                latency_score = 3.0
             elif model.average_latency > peer.average_latency:
-                score -= 1.0
+                latency_score = -1.0
 
-        # ---------------------------------------------------------
-        # GPU pressure
-        #
-        # The two models share the same GPU in this POC.
-        # When GPU pressure is high, prefer the lighter TinyLlama
-        # backend and slightly penalize Phi-3.
-        # ---------------------------------------------------------
         gpu_pressure = (
             gpu_utilization_percent >= 80
             or gpu_memory_utilization_percent >= 80
             or gpu_memory_free_mib < 2048
         )
 
+        gpu_pressure_score = 0.0
         if gpu_pressure:
             if model.model == "tinyllama":
-                score += 1.0
+                gpu_pressure_score = 1.0
             elif model.model == "phi3":
-                score -= 1.0
+                gpu_pressure_score = -1.0
 
-        return score
+        total_score = (
+            base_preference_score
+            + capacity_score
+            + latency_score
+            + gpu_pressure_score
+        )
+
+        return ModelScoreBreakdown(
+            model=model.model,
+            base_preference_score=base_preference_score,
+            capacity_score=capacity_score,
+            latency_score=latency_score,
+            gpu_pressure_score=gpu_pressure_score,
+            total_score=total_score,
+        )
 
     def decide(
         self,
@@ -120,7 +137,7 @@ class MultiSignalRouter:
             average_latency=phi3_avg_latency,
         )
 
-        tinyllama_score = self.score_model(
+        tinyllama_breakdown = self.score_model(
             model=tinyllama,
             base_selected_model=base_selected_model,
             peer=phi3,
@@ -129,7 +146,7 @@ class MultiSignalRouter:
             gpu_memory_free_mib=gpu_memory_free_mib,
         )
 
-        phi3_score = self.score_model(
+        phi3_breakdown = self.score_model(
             model=phi3,
             base_selected_model=base_selected_model,
             peer=tinyllama,
@@ -137,6 +154,9 @@ class MultiSignalRouter:
             gpu_memory_utilization_percent=gpu_memory_utilization_percent,
             gpu_memory_free_mib=gpu_memory_free_mib,
         )
+
+        tinyllama_score = tinyllama_breakdown.total_score
+        phi3_score = phi3_breakdown.total_score
 
         if tinyllama_score == float("-inf") and phi3_score == float("-inf"):
             raise ValueError(
@@ -154,13 +174,16 @@ class MultiSignalRouter:
         reason = (
             f"multi-signal scores: "
             f"tinyllama={tinyllama_score:.1f}, "
-            f"phi3={phi3_score:.1f}"
+            f"phi3={phi3_score:.1f}; "
+            f"selected={selected_model}"
         )
 
         return MultiSignalDecision(
             selected_model=selected_model,
             tinyllama_score=tinyllama_score,
             phi3_score=phi3_score,
+            tinyllama_breakdown=tinyllama_breakdown,
+            phi3_breakdown=phi3_breakdown,
             reason=reason,
         )
 

@@ -158,6 +158,12 @@ class LLMGateway:
                 phi3_multi_signal_score=(
                     multi_signal.phi3_score
                 ),
+                tinyllama_score_breakdown=(
+                    multi_signal.tinyllama_breakdown
+                ),
+                phi3_score_breakdown=(
+                    multi_signal.phi3_breakdown
+                ),
                 tinyllama_avg_latency=tinyllama_avg_latency,
                 phi3_avg_latency=phi3_avg_latency,
                 gpu_name=gpu_state.gpu_name,

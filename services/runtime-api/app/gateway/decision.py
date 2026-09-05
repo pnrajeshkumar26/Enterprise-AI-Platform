@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from app.routing.multi_signal_router import ModelScoreBreakdown
 from app.routing.token_capacity import TokenCapacityState
 
 
@@ -22,6 +23,10 @@ class GatewayDecision:
     # Multi-signal routing scores.
     tinyllama_multi_signal_score: float | None = None
     phi3_multi_signal_score: float | None = None
+
+    # Explainable multi-signal score breakdowns.
+    tinyllama_score_breakdown: ModelScoreBreakdown | None = None
+    phi3_score_breakdown: ModelScoreBreakdown | None = None
 
     # Historical latency signal observed before routing.
     tinyllama_avg_latency: float | None = None

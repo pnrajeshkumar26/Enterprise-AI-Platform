@@ -53,6 +53,8 @@ def test_gateway_uses_multi_signal_decision(monkeypatch):
         )(),
     )
 
+    from app.routing.multi_signal_router import ModelScoreBreakdown
+
     monkeypatch.setattr(
         "app.gateway.gateway.multi_signal_router.decide",
         lambda **kwargs: type(
@@ -62,9 +64,26 @@ def test_gateway_uses_multi_signal_decision(monkeypatch):
                 "selected_model": "phi3",
                 "tinyllama_score": 5.0,
                 "phi3_score": 9.0,
+                "tinyllama_breakdown": ModelScoreBreakdown(
+                    model="tinyllama",
+                    base_preference_score=2.0,
+                    capacity_score=1.0,
+                    latency_score=2.0,
+                    gpu_pressure_score=0.0,
+                    total_score=5.0,
+                ),
+                "phi3_breakdown": ModelScoreBreakdown(
+                    model="phi3",
+                    base_preference_score=2.0,
+                    capacity_score=8.0,
+                    latency_score=-1.0,
+                    gpu_pressure_score=0.0,
+                    total_score=9.0,
+                ),
                 "reason": (
                     "multi-signal scores: "
-                    "tinyllama=5.0, phi3=9.0"
+                    "tinyllama=5.0, phi3=9.0; "
+                    "selected=phi3"
                 ),
             },
         )(),
