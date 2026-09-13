@@ -35,7 +35,7 @@ The implementation currently focuses on a constrained GPU environment and uses a
 | GPU telemetry | NVIDIA DCGM Exporter | GPU utilization and memory metrics |
 | Visualization | Grafana | Dashboards and alerting |
 | Packaging | Docker / Docker Compose | Service isolation and lifecycle |
-| Testing | pytest | Unit/integration-oriented validation |
+| Testing | pytest | Unit, integration and controlled E2E validation |
 | CI/CD | GitHub Actions | Automated repository validation and delivery workflow |
 
 ## Architecture
@@ -112,19 +112,26 @@ Prometheus self-metrics -------------+
 
 ### 1. Intelligent model routing
 
-The `auto` route uses a deterministic score based on request characteristics such as technical indicators, complexity language, prompt length and multi-step structure.
+The `auto` route uses a deterministic multi-signal routing pipeline.
 
-Current high-level behavior:
+Pre-routing signals include:
 
-```text
-score < 3  -> TinyLlama
-score >= 3 -> Phi-3
-```
+- request characteristics and technical/factual indicators
+- estimated input tokens
+- requested output-token budget
+- model context/token capacity
+- historical latency
+- shared GPU/resource pressure
+- backend/model availability
+- base router preference
+
+The final decision combines these signals into explainable per-model scores.
+
+Capacity is enforced before inference. If the preferred model cannot satisfy the requested token budget, the gateway can automatically select an alternate model when capacity is available. If neither configured model has sufficient capacity, the request is rejected rather than silently exceeding the model context.
 
 Manual model selection remains available for controlled testing.
 
-The router is intentionally deterministic so behavior is testable and explainable. It can later evolve toward routing based on latency, cost, GPU pressure, model availability or workload classification.
-
+The router is intentionally deterministic so behavior is testable and explainable. Routing decisions expose score contributions for base preference, capacity, latency and GPU pressure.
 ### 2. Multiple inference backends
 
 The Runtime API hides backend-specific details behind one generation endpoint.
@@ -256,16 +263,18 @@ The Streamlit frontend specifically no longer requires a manual `streamlit run` 
 
 ## Testing
 
-The current local suite reached:
+The current local test suite reached:
 
 ```text
-13 passed
+86 passed
+5 integration tests passed
+3 E2E tests skipped by default
 ```
 
 Run it with:
 
 ```bash
-PYTHONPATH=services/runtime-api python -m pytest -q
+PYTHONPATH=services/runtime-api pytest -q
 ```
 
 The repository also contains GitHub Actions workflow validation.
@@ -313,7 +322,7 @@ The validated reference environment uses:
 ### 3. Run the tests
 
 ```bash
-PYTHONPATH=services/runtime-api python -m pytest -q
+PYTHONPATH=services/runtime-api pytest -q
 ```
 
 ### 4. Start the deployment components
@@ -351,6 +360,49 @@ curl -s http://127.0.0.1:3000/api/health
 | [Troubleshooting](docs/operations/troubleshooting.md) | Common failure isolation workflow |
 | [Restart Recovery](docs/operations/restart-recovery.md) | EC2/container recovery validation |
 | [Interview Notes](docs/interview-notes/llmops-interview-notes.md) | Interview questions and talking points |
+| [Sprint 14 Final Implementation Notes](docs/llmops/Sprint14_Final_Implementation_Notes.md) | Complete Sprint 14 implementation, testing, recovery and operational reference |
+
+## Sprint 14 LLMOps status
+
+Sprint 14 extends the platform from basic observability into operational LLMOps capabilities.
+
+Completed milestones:
+
+```text
+Stage 7  -> Explainable Routing
+Stage 8  -> Gateway Prometheus Metrics
+Stage 8A -> Streamlit Request Telemetry
+Stage 9  -> Grafana LLMOps Dashboard
+Stage 10 -> Unit / Integration / E2E Testing
+Stage 11 -> Restart / Recovery
+```
+
+Current Runtime API deployment:
+
+```text
+deployment/runtime-api/docker-compose.yml
+```
+
+```yaml
+image: enterprise-runtime-api:3.19
+restart: unless-stopped
+```
+
+The Runtime API image version and deployment image reference must remain synchronized whenever a new image is created.
+
+Stage 10 uses unit, integration and explicitly gated E2E testing.
+
+```bash
+PYTHONPATH=services/runtime-api pytest -q
+```
+
+Live E2E tests require explicit opt-in.
+
+```bash
+RUN_E2E=1 PYTHONPATH=services/runtime-api pytest -m e2e -q
+```
+
+During periods without active development, Docker workloads should be intentionally stopped to control GPU and runtime cost.
 
 ## What this project does not claim
 
@@ -370,34 +422,46 @@ Future production hardening would require additional controls such as identity/a
 
 ### Near term
 
+- Evaluation and benchmark framework
+- RAG / grounded knowledge workflows
+- Fine-tuning with SFT + LoRA + QLoRA
+- agentic / tool-using AI workflows
 - Kubernetes-native application deployment
-- stronger automated end-to-end smoke testing
-- richer request/token/cost telemetry
-- benchmark harness for latency, throughput and GPU pressure
-- quality-guard metrics in Prometheus/Grafana
+- stronger CI/CD and automated end-to-end validation
+- quality / guardrail metrics with Prometheus and Grafana
+- richer tracing, evaluation metrics and SLOs
 
 ### Later
 
-- RAG/grounded knowledge workflows
-- advanced routing based on cost/latency/resource state
-- production-grade security controls
-- autoscaling
-- model registry/lifecycle integration
-- richer tracing and SLOs
+- production-grade security, PII and safety controls
+- model registry and model lifecycle management
+- autoscaling and inference optimization
+- advanced adaptive routing using quality / cost / latency / resource signals
+- multimodal AI workflows
+- enterprise RAG optimization with hybrid search and reranking
 
-## Portfolio milestone
+## Current portfolio milestone
 
-The completed Sprint 13 observability milestone is tagged:
+Sprint 14 has extended the platform from observability into intelligent LLMOps operations.
 
-```text
-sprint-13-llmops-observability
-```
-
-The corresponding commit is:
+Completed milestones:
 
 ```text
-7ad8840  Sprint 13 - Complete LLMOps observability
+Stage 7  -> Explainable Routing
+Stage 8  -> Gateway Prometheus Metrics
+Stage 8A -> Streamlit Request Telemetry
+Stage 9  -> Grafana LLMOps Dashboard
+Stage 10 -> Unit / Integration / E2E Testing
+Stage 11 -> Restart / Recovery
 ```
+
+Current checkpoint:
+
+```text
+sprint-14-stage-11-restart-recovery
+```
+
+Stage 12 documentation and Stage 13 final release checkpoint are included in the final Sprint 14 release sequence.
 
 ## Learning path
 
