@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/pnrajeshkumar26/Enterprise-AI-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/pnrajeshkumar26/Enterprise-AI-Platform/actions/workflows/ci.yml)
 
-> **A hands-on LLMOps engineering project demonstrating model routing, GPU inference, containerized serving, observability, reliability, and response-quality guardrails.**
+> **A hands-on LLMOps engineering project demonstrating deterministic multi-signal model routing, GPU inference, containerized serving, request/token/cost telemetry, Prometheus/Grafana observability, response-quality guardrails, automated testing, and restart/recovery.**
 
 This repository documents and implements an evolving **Enterprise AI / LLMOps reference platform** built as a practical learning and portfolio project.
 
-The goal is to explore the engineering problems around operating LLM inference systemsâ€”not just calling a model API:
+The goal is to explore the engineering problems around operating LLM inference systems-not just calling a model API:
 
 - How should requests be routed to different models?
 - How do inference backends remain isolated behind a stable API?
@@ -41,32 +41,30 @@ The implementation currently focuses on a constrained GPU environment and uses a
 ## Architecture
 
 ```text
-                                      Browser
-                                         |
-                           +-------------+-------------+
-                           |                           |
-                           v                           v
-                    Streamlit :8501              Grafana :3000
-                           |                           |
-                           | Docker network           |
-                           v                           v
-                    Runtime API :8000 ----------> Prometheus :9090*
-                           |
-                     +-----+------+
-                     |            |
-                     v            v
-                TinyLlama       Phi-3
-                llama.cpp       vLLM
-                     |            |
-                     +-----+------+
-                           |
-                           v
-                       Tesla T4
-                           ^
-                           |
-                    DCGM Exporter :9400*
+Browser
+   |
+   +--> Streamlit :8501
+   |       |
+   |       v
+   |   Runtime API :8001
+   |       |
+   |       +--> Request validation
+   |       +--> Intelligent multi-signal router
+   |       +--> Capacity checks
+   |       +--> Quality guard
+   |       |
+   |       +-----> TinyLlama / llama.cpp
+   |       |
+   |       +-----> Phi-3 / vLLM
+   |                    |
+   |                    v
+   |                 Tesla T4
+   |
+   +--> Grafana :3000
 
-* Prometheus and DCGM host ports are localhost-restricted.
+Runtime API ----------> Prometheus :9090
+DCGM Exporter :9400 --> Prometheus
+Prometheus -----------> Grafana
 ```
 
 ### Request flow
@@ -80,34 +78,57 @@ Streamlit
     v
 Runtime API
     |
+    +--> Validate request
+    |
+    +--> Estimate tokens and check capacity
+    |
+    +--> Multi-signal routing decision
+    |
+    +-----> TinyLlama / llama.cpp
+    |
+    +-----> Phi-3 / vLLM
+    |
+    +--> Response quality guard
+             |
+             +--> accept response
+             |
+             +--> one corrective retry for configured contradiction
+    |
+    +--> Record request, token, latency and cost telemetry
+    |
     v
-Model Router
-    |
-    +---- simple/casual ----------> TinyLlama / llama.cpp
-    |
-    +---- technical/complex ------> Phi-3 / vLLM
-                                      |
-                                      v
-                               Response Quality Guard
-                                      |
-                                +-----+-----+
-                                |           |
-                              valid     known contradiction
-                                |           |
-                                v           v
-                             response   one corrective retry
+Response to user
 ```
 
 ### Observability flow
 
 ```text
-Runtime API metrics ------------------+
-                                     |
-DCGM GPU metrics --------------------+--> Prometheus --> Grafana --> Alerts
-                                     |
-Prometheus self-metrics -------------+
-```
+Runtime API
+   |
+   +--> request/status metrics
+   +--> routing outcomes and scores
+   +--> input/output/total token metrics
+   +--> latency and failure metrics
+   +--> estimated cost metrics
+   |
+   v
+Prometheus :9090
+   |
+   +--> Grafana dashboards
+   +--> Grafana alerting
 
+DCGM Exporter :9400
+   |
+   v
+Prometheus
+   |
+   v
+Grafana GPU/resource views
+
+Streamlit
+   |
+   +--> per-request telemetry from Runtime API response
+```
 ## LLMOps capabilities demonstrated
 
 ### 1. Intelligent model routing
@@ -240,7 +261,16 @@ This is a development/reference configuration, not a substitute for a production
 
 ## Reliability and recovery
 
-The containers use Docker restart policies and were validated through container restart and EC2 stop/start scenarios.
+The Runtime API and Streamlit deployment definitions use Docker `restart: unless-stopped` so the application services can recover from normal container restarts.
+
+Stage 11 validated controlled container restart recovery:
+
+```text
+Runtime API restart -> health endpoint PASS
+Streamlit restart   -> Streamlit health endpoint PASS
+```
+
+A full EC2 stop/start recovery procedure is documented, but a full EC2 stop/start recovery test was not claimed as validated in Stage 11.
 
 The intended recovery chain is:
 
@@ -259,7 +289,7 @@ Docker daemon
    +--> Grafana
 ```
 
-The Streamlit frontend specifically no longer requires a manual `streamlit run` command after host recovery.
+Operational recovery should validate service health before performing live inference.
 
 ## Testing
 
@@ -283,23 +313,25 @@ The repository also contains GitHub Actions workflow validation.
 
 ```text
 .
-frontend/                    # Streamlit application
-services/
-runtime-api/                # FastAPI orchestration service
-tinyllama/                  # llama.cpp TinyLlama backend
-deployment/
-frontend/                   # Streamlit Compose deployment
-observability/              # Prometheus, Grafana and DCGM config
-tests/                      # Automated tests
-docs/
-architecture/              # System and observability architecture
-llmops/                    # Routing, metrics and quality guardrails
-operations/                # Deployment and troubleshooting
-interview/                 # Interview and learning notes
-.github/workflows/         # CI/CD workflows
-README.md
+|-- frontend/
+|-- services/
+|   `-- runtime-api/
+|-- deployment/
+|   |-- frontend/
+|   |-- runtime-api/
+|   `-- observability/
+|-- tests/
+|-- docs/
+|   |-- architecture/
+|   |-- llmops/
+|   |-- operations/
+|   `-- interview-notes/
+|-- .github/
+|   `-- workflows/
+`-- README.md
 ```
 
+The repository separates application code, deployment configuration, automated tests and operational documentation so that the platform can be understood and reproduced component by component.
 ## Quick start
 
 ### 1. Clone
@@ -327,8 +359,9 @@ PYTHONPATH=services/runtime-api pytest -q
 
 ### 4. Start the deployment components
 
-The repository keeps frontend and observability Compose definitions under `deployment/`. Review the environment variables and external Docker network assumptions before starting services.
+The repository keeps Runtime API, frontend and observability deployment definitions under `deployment/`. Review the environment variables and external Docker network assumptions before starting services.
 
+The Runtime API deployment definition is `deployment/runtime-api/docker-compose.yml` and uses `restart: unless-stopped`.
 The validated deployment uses the external network:
 
 ```text
@@ -375,6 +408,8 @@ Stage 8A -> Streamlit Request Telemetry
 Stage 9  -> Grafana LLMOps Dashboard
 Stage 10 -> Unit / Integration / E2E Testing
 Stage 11 -> Restart / Recovery
+Stage 12 -> Final Documentation
+Stage 13 -> Final Release
 ```
 
 Current Runtime API deployment:
@@ -403,7 +438,6 @@ RUN_E2E=1 PYTHONPATH=services/runtime-api pytest -m e2e -q
 ```
 
 During periods without active development, Docker workloads should be intentionally stopped to control GPU and runtime cost.
-
 ## What this project does not claim
 
 This repository is a **learning and portfolio reference implementation**, not a claim of production readiness.
@@ -442,7 +476,13 @@ Future production hardening would require additional controls such as identity/a
 
 ## Current portfolio milestone
 
-Sprint 14 has extended the platform from observability into intelligent LLMOps operations.
+Sprint 14 is the current completed portfolio milestone.
+
+The final release is tagged:
+
+```text
+sprint-14-final
+```
 
 Completed milestones:
 
@@ -453,15 +493,11 @@ Stage 8A -> Streamlit Request Telemetry
 Stage 9  -> Grafana LLMOps Dashboard
 Stage 10 -> Unit / Integration / E2E Testing
 Stage 11 -> Restart / Recovery
+Stage 12 -> Final Documentation
+Stage 13 -> Final Release
 ```
 
-Current checkpoint:
-
-```text
-sprint-14-stage-11-restart-recovery
-```
-
-Stage 12 documentation and Stage 13 final release checkpoint are included in the final Sprint 14 release sequence.
+The final release includes intelligent routing, explainability, request and token telemetry, cost estimation, Prometheus/Grafana observability, quality guardrails, automated testing and restart/recovery practices.
 
 ## Learning path
 
@@ -469,33 +505,41 @@ A useful way to explore the project is to follow the platform in this order:
 
 ```text
 LLM inference
-    †
+    ->
 Runtime API
-    +
+    ->
 Model routing
-    †
+    ->
 Containerization
-    †
+    ->
 GPU operations
-    †
+    ->
 Metrics
-    †
+    ->
 Observability
-    †
-Alerting
-    †
+    ->
 Quality guardrails
-    †
+    ->
 CI/CD
-    †
-Kubernetes evolution
+    ->
+LLMOps
+    ->
+Evaluation
+    ->
+RAG
+    ->
+Fine-tuning
+    ->
+Agentic AI
+    ->
+Kubernetes and production hardening
 ```
 
 ## About
 
 This project is part of a hands-on journey into **LLMOps, MLOps, GenAI infrastructure, GPU inference, observability and AI platform engineering**.
 
-The repository intentionally documents both successful implementation and troubleshooting lessons so it can be useful to people learning these areasâ€”not only to people reviewing the final code.
+The repository intentionally documents both successful implementation and troubleshooting lessons so it can be useful to people learning these areas - not only to people reviewing the final code.
 
 ## Repository
 
