@@ -1,0 +1,20 @@
+services:
+  runtime-api:
+    image: enterprise-runtime-api:3.19
+    container_name: enterprise-runtime-api
+    restart: unless-stopped
+
+    ports:
+      - "8001:8000"
+
+    environment:
+      MODEL_ROOT: /models
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+
+    networks:
+      - enterprise-ai-net
+
+networks:
+  enterprise-ai-net:
+    external: true

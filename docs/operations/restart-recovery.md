@@ -2,56 +2,138 @@
 
 ## Objective
 
-The platform should recover from container restarts and EC2 stop/start events without manual service launches.
+The platform should recover from container and EC2 restarts without manual service launches.
 
-## Why Streamlit was changed
+## Permanent Restart Policy
 
-The frontend originally ran as a process in an interactive environment. After the environment/session ended, Streamlit had to be started manually.
+Application services use Docker's `unless-stopped` restart policy.
 
-It is now a Docker service with:
+Runtime API deployment:
 
-```yaml
-restart: unless-stopped
-```
+    deployment/runtime-api/docker-compose.yml
 
-and a health check against:
+Key settings:
 
-```text
-/_stcore/health
-```
+    image: enterprise-runtime-api:3.19
+    restart: unless-stopped
 
-## Recovery validation
+Streamlit deployment:
 
-After EC2 restart:
+    deployment/frontend/docker-compose.yml
 
-```bash
-docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
-```
+uses:
 
-Confirm Streamlit is present and healthy, then:
+    restart: unless-stopped
 
-```bash
-curl -s http://127.0.0.1:8501/_stcore/health
-```
+## Runtime API Recovery
+
+    curl -fsS http://127.0.0.1:8001/health
+
+Expected response contains:
+
+    "status": "healthy"
+    "service": "runtime-api"
+
+## Streamlit Recovery
+
+    curl -fsS http://127.0.0.1:8501/_stcore/health
 
 Expected:
 
-```text
-ok
-```
+    ok
 
-Validate the Runtime API:
+## Controlled Restart Validation
 
-```bash
-curl -s http://127.0.0.1:8001/health
-```
+Stage 11 validated both application services.
 
-Validate Prometheus targets:
+Runtime API:
 
-```bash
-curl -s http://127.0.0.1:9090/api/v1/targets | python3 -m json.tool
-```
+    docker restart enterprise-runtime-api
+    sleep 5
+    curl -fsS http://127.0.0.1:8001/health
 
-## Architecture lesson
+Streamlit:
 
-A frontend that depends on a manually attached shell is operationally different from a container-managed service. For a portfolio platform, containerizing the frontend makes the lifecycle consistent with the rest of the stack.
+    docker restart enterprise-streamlit
+    sleep 8
+    curl -fsS http://127.0.0.1:8501/_stcore/health
+
+Result:
+
+    Runtime API -> PASS
+    Streamlit   -> PASS
+
+Restart policies:
+
+    enterprise-runtime-api -> unless-stopped
+    enterprise-streamlit   -> unless-stopped
+
+## Recreating Runtime API
+
+Use the repository deployment definition:
+
+    docker compose \
+      -f deployment/runtime-api/docker-compose.yml \
+      up -d
+
+## Image Version Synchronization
+
+Whenever a new Runtime API image is built, update the deployment image reference before deployment.
+
+Example:
+
+    New image:
+    enterprise-runtime-api:3.20
+
+    Deployment:
+    image: enterprise-runtime-api:3.20
+
+The Runtime API image tag and deployment image reference must remain synchronized.
+
+## EC2 Stop/Start Recovery
+
+After EC2 restart:
+
+    docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+
+Validate Runtime API:
+
+    curl -fsS http://127.0.0.1:8001/health
+
+Validate Streamlit:
+
+    curl -fsS http://127.0.0.1:8501/_stcore/health
+
+Validate Prometheus:
+
+    curl -fsS http://127.0.0.1:9090/-/healthy
+
+## Cost-Control Operation
+
+The `unless-stopped` policy does not force the EC2 instance to remain running.
+
+Intentional shutdown remains possible:
+
+    docker stop enterprise-runtime-api enterprise-streamlit
+
+During longer periods without development activity, stop platform workloads to avoid unnecessary GPU and runtime usage.
+
+Persistent AWS resources such as EBS volumes and snapshots are separate from Docker container lifecycle.
+
+## Stage 11 Result
+
+    Runtime API restart          -> PASS
+    Runtime API health           -> PASS
+    Streamlit restart            -> PASS
+    Streamlit health             -> PASS
+    Permanent Runtime API config -> PASS
+    Restart policy               -> unless-stopped
+
+## Architecture Lesson
+
+Reliable container operations require:
+
+1. Correct runtime configuration.
+2. A reproducible deployment definition.
+
+A one-time `docker update` fixes an existing container. A version-controlled deployment definition ensures future Runtime API containers are created with the same recovery behavior.
