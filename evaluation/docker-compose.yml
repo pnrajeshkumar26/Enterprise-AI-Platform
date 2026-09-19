@@ -1,0 +1,21 @@
+services:
+  evaluation-metrics:
+    build:
+      context: ..
+      dockerfile: evaluation/Dockerfile
+    container_name: enterprise-evaluation-metrics
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:9108:9108"
+
+    environment:
+      EVALUATION_REPORT: /app/evaluation/reports/model_benchmark.json
+      EVALUATION_METRICS_PORT: "9108"
+
+    networks:
+      - enterprise-ai-net
+
+networks:
+  enterprise-ai-net:
+    external: true
