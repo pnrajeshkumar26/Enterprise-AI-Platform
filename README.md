@@ -2,72 +2,181 @@
 
 [![CI](https://github.com/pnrajeshkumar26/Enterprise-AI-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/pnrajeshkumar26/Enterprise-AI-Platform/actions/workflows/ci.yml)
 
-> **A hands-on LLMOps engineering project demonstrating deterministic multi-signal model routing, GPU inference, containerized serving, request/token/cost telemetry, Prometheus/Grafana observability, response-quality guardrails, automated testing, and restart/recovery.**
+> **A hands-on Enterprise AI / LLMOps engineering project demonstrating deterministic multi-signal model routing, GPU inference, containerized model serving, request/token/cost telemetry, Prometheus/Grafana observability, response-quality guardrails, LLM-as-a-Judge evaluation, model benchmarking, evaluation observability, automated testing, restart/recovery, and CI/CD quality gates.**
 
-This repository documents and implements an evolving **Enterprise AI / LLMOps reference platform** built as a practical learning and portfolio project.
+This repository documents and implements an evolving **Enterprise AI / LLMOps reference platform** built as a practical engineering, learning, and portfolio project.
 
-The goal is to explore the engineering problems around operating LLM inference systems-not just calling a model API:
+The goal is to explore the engineering challenges involved in operating LLM inference systems end to end — not simply calling a model API.
 
-- How should requests be routed to different models?
-- How do inference backends remain isolated behind a stable API?
-- How do we monitor request volume, latency, failures, routing and GPU health?
-- How do we recover the platform after container or EC2 restarts?
-- How do we reduce known model-quality failures without pretending an LLM is always factual?
-- How do we turn experimentation into reproducible deployment and CI workflows?
+The project addresses questions such as:
+
+- How should requests be routed across multiple models using deterministic signals?
+- How can different inference backends remain isolated behind a stable runtime API?
+- How can request volume, latency, failures, token usage, estimated inference cost, routing decisions and GPU health be measured?
+- How can the platform recover predictably after container or host restarts?
+- How can known model-quality failure patterns be reduced with bounded runtime guardrails without claiming that an LLM is always factual?
+- How can LLM responses be evaluated systematically instead of treating model output as ground truth?
+- How can **LLM-as-a-Judge** be combined with deterministic metrics and a defined scoring rubric?
+- How can candidate models be benchmarked using a versioned evaluation dataset?
+- How can evaluation results be exposed through Prometheus/Grafana and used as a CI/CD quality gate?
+- How can experimentation be converted into reproducible, testable and operational LLMOps workflows?
 
 ## Why this project is useful
 
-For **AI engineers, MLOps/LLMOps learners, platform engineers, recruiters and hiring managers**, this repository provides a concrete example of the journey from model serving to operational observability.
+For **AI/ML engineers, LLMOps and MLOps learners, platform engineers, DevOps engineers, recruiters and hiring managers**, this repository provides a concrete example of how an AI platform can evolve from model serving into a broader **LLMOps engineering lifecycle**.
 
-The implementation currently focuses on a constrained GPU environment and uses a deliberately small set of technologies so the end-to-end system can be understood and troubleshot rather than hidden behind managed services.
+The implementation intentionally focuses on a constrained GPU environment and a relatively small technology stack so that the end-to-end system can be understood, measured, tested and troubleshot rather than hidden behind managed services.
+
+The platform demonstrates the progression:
+
+```text
+LLM Inference
+    ->
+Model Serving
+    ->
+Runtime API
+    ->
+Intelligent Model Routing
+    ->
+GPU Operations
+    ->
+Token / Cost Telemetry
+    ->
+Prometheus / Grafana Observability
+    ->
+Response-Quality Guardrails
+    ->
+LLM Evaluation
+    ->
+LLM-as-a-Judge
+    ->
+Model Benchmarking
+    ->
+Evaluation Observability
+    ->
+CI/CD Quality Gate
+```
 
 ## Current platform
 
 | Layer | Technology | Role |
 |---|---|---|
-| UI | Streamlit | Interactive inference client |
-| API | FastAPI | Runtime orchestration layer |
-| Routing | Python ModelRouter | Deterministic request classification and model selection |
+| UI | Streamlit | Interactive inference client and explicit evaluation flow |
+| API | FastAPI | Stable runtime orchestration layer |
+| Routing | Python ModelRouter | Deterministic multi-signal model selection |
 | Lightweight inference | TinyLlama + llama.cpp | Lower-complexity workload path |
-| Higher-capability inference | Phi-3 + vLLM | Technical/complex workload path |
+| Higher-capability inference | Phi-3 Mini + vLLM | Technical/complex workload path |
+| Evaluation Judge | Qwen/Qwen2.5-1.5B-Instruct | Dedicated offline LLM-as-a-Judge |
+| Evaluation dataset | JSONL v1.0 | Versioned evaluation cases and criteria |
+| Evaluation metrics | Python + prometheus-client | Evaluation score, pass rate, latency, cases and token metrics |
 | GPU | NVIDIA Tesla T4 | Shared inference accelerator |
-| Metrics | Prometheus | Time-series metrics collection |
-| GPU telemetry | NVIDIA DCGM Exporter | GPU utilization and memory metrics |
-| Visualization | Grafana | Dashboards and alerting |
-| Packaging | Docker / Docker Compose | Service isolation and lifecycle |
-| Testing | pytest | Unit, integration and controlled E2E validation |
-| CI/CD | GitHub Actions | Automated repository validation and delivery workflow |
+| GPU telemetry | NVIDIA DCGM Exporter | GPU utilization and resource telemetry |
+| Metrics | Prometheus | Runtime, GPU and evaluation metrics collection |
+| Visualization | Grafana | LLMOps, GPU and evaluation dashboards |
+| Packaging | Docker / Docker Compose | Service isolation and lifecycle management |
+| Testing | pytest | Unit, integration, evaluation and controlled E2E validation |
+| CI/CD | GitHub Actions | Repository validation, image delivery and evaluation quality gate |
 
 ## Architecture
+
+The platform separates **online inference operations** from **offline evaluation and quality engineering**.
+
+```text
+                                      ENTERPRISE AI PLATFORM
+                                              |
+                 +----------------------------+----------------------------+
+                 |                            |                            |
+                 v                            v                            v
+           User / Browser              Observability                  Evaluation
+                 |                            |                            |
+                 v                            |                            v
+          Streamlit :8501                    |                  Evaluation Dataset
+                 |                            |                            |
+                 v                            |                            v
+         Runtime API :8001                   |                 Evaluation Runner
+                 |                            |                            |
+      +----------+-----------+                |                            v
+      |                      |                |                   Candidate Responses
+      v                      v                |                            |
+Request validation    Model Router            |                            v
+      |                      |                |                    Qwen Judge Model
+      |          +-----------+                |                     (offline judge)
+      |          |                            |                            |
+      v          v                            +-------------+--------------+
+  Capacity   Routing                                      |
+  checks     decision                                     v
+      |          |                                Evaluation Results
+      |          +-----> TinyLlama / llama.cpp            |
+      |          |                                        v
+      |          +-----> Phi-3 / vLLM             Prometheus / Grafana
+      |                        |
+      |                        v
+      +-------------------- Tesla T4
+
+Runtime API ---------------------> Prometheus :9090
+DCGM Exporter :9400 ------------> Prometheus
+Evaluation Exporter :9108 -------> Prometheus
+Prometheus ----------------------> Grafana :3000
+```
+
+### Online inference architecture
 
 ```text
 Browser
    |
-   +--> Streamlit :8501
-   |       |
-   |       v
-   |   Runtime API :8001
-   |       |
-   |       +--> Request validation
-   |       +--> Intelligent multi-signal router
-   |       +--> Capacity checks
-   |       +--> Quality guard
-   |       |
-   |       +-----> TinyLlama / llama.cpp
-   |       |
-   |       +-----> Phi-3 / vLLM
-   |                    |
-   |                    v
-   |                 Tesla T4
+   v
+Streamlit
    |
-   +--> Grafana :3000
-
-Runtime API ----------> Prometheus :9090
-DCGM Exporter :9400 --> Prometheus
-Prometheus -----------> Grafana
+   v
+Runtime API
+   |
+   +--> Request validation
+   +--> Token estimation / capacity checks
+   +--> Deterministic multi-signal router
+   +--> TinyLlama / llama.cpp
+   +--> Phi-3 / vLLM
+   +--> Response-quality guard
+   +--> Request / token / latency / cost telemetry
+   |
+   v
+Response
 ```
 
-### Request flow
+### Offline evaluation architecture
+
+```text
+Versioned Evaluation Dataset
+          |
+          v
+   Evaluation Runner
+          |
+          v
+   Candidate Model
+          |
+          v
+   Candidate Response
+          |
+          +-----------------------+
+          |                       |
+          v                       v
+Deterministic Metrics       LLM-as-a-Judge
+                                  |
+                                  v
+                    Qwen/Qwen2.5-1.5B-Instruct
+                                  |
+                                  v
+                       Structured Evaluation Result
+                                  |
+                                  v
+                      Benchmark / Evaluation Report
+                                  |
+                                  v
+                     Prometheus / Grafana + Quality Gate
+```
+
+The evaluation judge is deliberately separated from the runtime routing candidates. **Qwen/Qwen2.5-1.5B-Instruct is the dedicated evaluation judge**, while TinyLlama and Phi-3 remain candidate generation models.
+
+## Request flow
 
 ```text
 User prompt
@@ -80,62 +189,135 @@ Runtime API
     |
     +--> Validate request
     |
-    +--> Estimate tokens and check capacity
+    +--> Estimate token requirements
     |
-    +--> Multi-signal routing decision
+    +--> Check model context / capacity
+    |
+    +--> Evaluate routing signals
+    |       |
+    |       +--> request characteristics
+    |       +--> token requirements
+    |       +--> latency
+    |       +--> GPU / resource pressure
+    |       +--> backend availability
+    |       +--> model capacity
+    |       +--> base router preference
+    |
+    +--> Calculate explainable model scores
     |
     +-----> TinyLlama / llama.cpp
     |
     +-----> Phi-3 / vLLM
     |
-    +--> Response quality guard
-             |
-             +--> accept response
-             |
-             +--> one corrective retry for configured contradiction
+    +--> Response-quality guard
+    |       |
+    |       +--> accept response
+    |       |
+    |       +--> one bounded corrective retry for configured contradictions
     |
-    +--> Record request, token, latency and cost telemetry
+    +--> Record request, token, latency and estimated cost telemetry
     |
     v
 Response to user
 ```
 
-### Observability flow
+### Explicit evaluation flow
+
+Evaluation is an explicit offline or controlled activity. The judge is not placed on the synchronous `/generate` hot path.
+
+```text
+Evaluation Case
+     |
+     v
+Candidate Model
+     |
+     v
+Generated Response
+     |
+     +--> Deterministic metrics
+     |
+     +--> LLM-as-a-Judge
+     |       |
+     |       v
+     |   Qwen Judge
+     |
+     v
+Weighted Evaluation Score
+     |
+     +--> PASS
+     |
+     +--> FAIL
+```
+
+## Observability flow
+
+The platform has separate observability paths for **runtime operations, infrastructure telemetry and evaluation quality**.
+
+### Runtime observability
 
 ```text
 Runtime API
-   |
-   +--> request/status metrics
-   +--> routing outcomes and scores
-   +--> input/output/total token metrics
-   +--> latency and failure metrics
-   +--> estimated cost metrics
-   |
-   v
+    |
+    +--> request / status metrics
+    +--> routing outcomes and scores
+    +--> input / output / total token metrics
+    +--> latency and failure metrics
+    +--> estimated cost metrics
+    |
+    v
 Prometheus :9090
-   |
-   +--> Grafana dashboards
-   +--> Grafana alerting
-
-DCGM Exporter :9400
-   |
-   v
-Prometheus
-   |
-   v
-Grafana GPU/resource views
-
-Streamlit
-   |
-   +--> per-request telemetry from Runtime API response
+    |
+    v
+Grafana :3000
 ```
+
+### GPU observability
+
+```text
+DCGM Exporter :9400
+        |
+        v
+Prometheus
+        |
+        v
+Grafana GPU / resource views
+```
+
+### Evaluation observability
+
+```text
+Evaluation Runner
+        |
+        v
+model_benchmark.json
+        |
+        v
+Evaluation Metrics Exporter :9108
+        |
+        v
+Prometheus
+        |
+        v
+Grafana Evaluation Panels
+```
+
+Evaluation metrics currently include:
+
+```text
+evaluation_score
+evaluation_pass_rate
+evaluation_generation_latency_seconds
+evaluation_cases_total
+evaluation_generation_tokens_total
+```
+
 ## LLMOps capabilities demonstrated
 
-### 1. Intelligent model routing
+### 1. Deterministic intelligent model routing
 
 The `auto` route uses a deterministic multi-signal routing pipeline.
 
-Pre-routing signals include:
+Signals include:
 
 - request characteristics and technical/factual indicators
 - estimated input tokens
@@ -146,78 +328,221 @@ Pre-routing signals include:
 - backend/model availability
 - base router preference
 
-The final decision combines these signals into explainable per-model scores.
+The router produces explainable per-model scores.
 
-Capacity is enforced before inference. If the preferred model cannot satisfy the requested token budget, the gateway can automatically select an alternate model when capacity is available. If neither configured model has sufficient capacity, the request is rejected rather than silently exceeding the model context.
+Capacity is checked before inference. When the preferred model cannot satisfy the requested token budget, the platform can select an alternate configured model when capacity is available. If neither configured model can safely satisfy the request, the request is rejected instead of silently exceeding model capacity.
 
 Manual model selection remains available for controlled testing.
 
-The router is intentionally deterministic so behavior is testable and explainable. Routing decisions expose score contributions for base preference, capacity, latency and GPU pressure.
 ### 2. Multiple inference backends
 
-The Runtime API hides backend-specific details behind one generation endpoint.
+The Runtime API provides one stable generation interface over multiple inference implementations:
 
-- **TinyLlama** is served through `llama.cpp` for lightweight requests.
-- **Phi-3** is served through vLLM's OpenAI-compatible chat-completions interface for more technical/complex workloads.
+- **TinyLlama** through `llama.cpp`
+- **Phi-3 Mini** through vLLM's OpenAI-compatible API
 
-The architecture therefore separates application orchestration from inference implementation.
+This separates application orchestration from backend-specific inference implementation.
 
-### 3. Prometheus metrics
+### 3. Request, token and cost telemetry
 
-The Runtime API exposes a Prometheus-native endpoint at `/metrics/` and instruments areas including:
+The runtime records operational signals including:
 
-- request count
+- request volume
 - request status
 - selected model
-- routing decisions
+- input tokens
+- output tokens
+- total tokens
 - generation latency
 - generation failures
-- backend availability
-- configured model count
-- runtime health
+- routing decisions
+- estimated self-hosted inference cost
 
 ### 4. GPU observability
 
-NVIDIA DCGM Exporter publishes GPU metrics into Prometheus, including framebuffer memory and GPU utilization.
+NVIDIA DCGM Exporter feeds GPU telemetry into Prometheus, allowing application behavior to be correlated with infrastructure signals such as:
 
-This allows infrastructure signals to be correlated with application behavior instead of troubleshooting inference from logs alone.
+- GPU utilization
+- GPU memory usage
+- framebuffer pressure
+- GPU temperature
+- GPU power/resource state
 
-### 5. Grafana dashboards and alerts
+### 5. Prometheus and Grafana observability
 
-The repository contains a provisioned LLMOps dashboard and five operational alert rules covering:
+The platform contains provisioned dashboards and operational alerting for runtime and infrastructure behavior.
 
-1. Runtime API availability
-2. DCGM exporter availability
-3. LLM generation failure rate
-4. LLM P95 latency
-5. GPU framebuffer memory pressure
+The dashboard covers areas such as:
 
-Alert rules are maintained as configuration files so the observability layer can be reproduced rather than manually rebuilt in the UI.
+- runtime API health
+- request rate
+- latency
+- routing outcomes
+- routing scores and margins
+- token throughput
+- estimated inference cost
+- GPU utilization and memory
+- evaluation score
+- evaluation pass rate
+- evaluation latency
+- evaluation case coverage
 
 ### 6. Response-quality guardrails
 
-The project encountered a real model-quality issue during observability validation: the model could confidently invent technical definitions.
+The project encountered a model-quality issue where a model could confidently invent technical definitions.
 
-The response path therefore adds:
+The runtime therefore uses bounded quality protection including:
 
-- a compact verified enterprise context
+- compact verified enterprise context
 - conservative generation parameters
-- a narrow deterministic terminology guard
-- at most one corrective regeneration for known platform-critical contradictions
+- deterministic terminology checks
+- at most one corrective regeneration for configured contradictions
 
-This is **not** a general hallucination detector. It is intentionally limited and documented as such.
+This is **not** a general hallucination detector and does not claim to guarantee factual correctness.
 
-### 7. Containerized Streamlit frontend
+### 7. LLM evaluation and LLM-as-a-Judge
 
-The Streamlit frontend is containerized and uses Docker service discovery to reach the Runtime API:
+Phase 15 introduces a dedicated evaluation layer with a versioned **40-case dataset** spanning:
 
 ```text
-RUNTIME_API_URL=http://enterprise-runtime-api:8000
+Factual
+Reasoning
+Instruction Following
+Explanation
+Summarization
+Safety
 ```
 
-The container uses `restart: unless-stopped` and a health check so the frontend automatically recovers with the Docker workload after a host restart.
+The rubric uses four dimensions:
 
-This removes the previous dependency on manually launching Streamlit from an interactive shell after EC2 restart/session expiry.
+```text
+Correctness            40%
+Relevance              25%
+Completeness           20%
+Instruction Following  15%
+```
+
+Scores use a 1–5 scale with an initial configurable pass threshold of **3.5**.
+
+The dedicated evaluation judge is:
+
+```text
+Qwen/Qwen2.5-1.5B-Instruct
+```
+
+The judge receives the evaluation inputs and candidate response and returns structured rubric scores with concise evidence.
+
+Judge outputs are treated as **measurements rather than ground truth**. The repository includes a calibration framework, and the current calibration data is documented as provisional pending independent human annotation.
+
+### 8. Model benchmarking
+
+The initial POC benchmark evaluated 10 cases for each candidate generation model.
+
+| Model | Cases | Average Score | Pass Rate | Avg Generation Latency |
+|---|---:|---:|---:|---:|
+| TinyLlama | 10 | 3.4 | 60% | 0.712 s |
+| Phi-3 | 10 | 4.2 | 80% | 2.304 s |
+
+This is a **small POC smoke benchmark**, not a statistically strong production evaluation. Its purpose is to validate the evaluation architecture, model-comparison workflow and quality-gate mechanics.
+
+### 9. Evaluation observability
+
+Evaluation results are exported separately from the Runtime API and exposed through Prometheus and Grafana so that quality can be viewed alongside latency, token usage and infrastructure telemetry.
+
+The current Grafana dashboard includes dedicated evaluation panels for:
+
+- evaluation score
+- evaluation pass rate
+- generation latency
+- evaluated cases
+
+### 10. CI/CD evaluation quality gate
+
+Phase 15 adds a manually triggered GitHub Actions workflow for evaluation quality enforcement:
+
+```text
+.github/workflows/evaluation-quality-gate.yml
+```
+
+The workflow validates the evaluation test suite and checks a selected benchmark report against a configurable minimum score.
+
+With the current benchmark:
+
+```text
+Phi-3
+4.2 >= 3.5  -> PASS
+
+TinyLlama
+3.4 < 3.5   -> FAIL
+```
+
+Normal pull-request CI does not run live GPU inference or LLM evaluation. Expensive inference remains an explicit evaluation activity.
+
+### 11. Automated testing and reproducibility
+
+The repository includes:
+
+- unit tests
+- integration tests
+- controlled E2E tests
+- evaluation dataset validation
+- deterministic metric tests
+- judge parser tests
+- vLLM judge client tests
+- benchmark validation
+- Prometheus evaluation metric tests
+- quality-gate tests
+- GitHub Actions CI validation
+
+The current Phase 15 local regression baseline is:
+
+```text
+122 passed
+3 skipped
+2 warnings
+```
+
+The two warnings are existing Starlette deprecation warnings from the integration test environment.
+
+### 12. Containerized operational recovery
+
+The platform uses Docker service isolation and restart policies to support recovery after normal container restarts.
+
+The project documents controlled restart recovery and distinguishes that from an unverified claim of full production disaster recovery.
+
+### 13. Practical LLMOps engineering lifecycle
+
+```text
+Model Inference
+      ->
+Serving
+      ->
+Routing
+      ->
+Resource Awareness
+      ->
+Telemetry
+      ->
+Observability
+      ->
+Guardrails
+      ->
+Evaluation
+      ->
+LLM-as-a-Judge
+      ->
+Benchmarking
+      ->
+Quality Metrics
+      ->
+Quality Gate
+      ->
+CI/CD
+      ->
+Operational LLMOps
+```
+
+This repository therefore focuses on **how to engineer around LLMs**, not only how to invoke them.
 
 ## Observability implementation
 
@@ -225,52 +550,51 @@ The main observability configuration is under:
 
 ```text
 deployment/observability/
-           prometheus/
-             docker-compose.yml
-             prometheus.yml
-           grafana/
-             docker-compose.yml
-             dashboards/
-               enterprise-ai-llmops.json
-           provisioning/
-             alerting/
-             dashboards/
-             datasources/
+    prometheus/
+        docker-compose.yml
+        prometheus.yml
+    grafana/
+        docker-compose.yml
+        dashboards/
+            enterprise-ai-llmops.json
+    provisioning/
+        alerting/
+        dashboards/
+        datasources/
 ```
 
-The validated scrape jobs are:
+The validated Prometheus scrape jobs are:
 
 ```text
 runtime-api
 prometheus
 dcgm
+evaluation
 ```
+
+The evaluation exporter is deployed separately from the Runtime API so that offline quality measurements do not alter the runtime generation hot path.
 
 ## Security and exposure model
 
-The current development environment deliberately restricts the host exposure of the metrics endpoints:
+The current development/reference environment deliberately restricts host exposure of selected metrics endpoints:
 
 ```text
 Prometheus  -> 127.0.0.1:9090
 DCGM        -> 127.0.0.1:9400
+Evaluation  -> 127.0.0.1:9108
 ```
 
-The services continue communicating through the private Docker network using service names rather than container IP addresses.
+The services communicate through the private Docker network using service names rather than container IP addresses.
 
-This is a development/reference configuration, not a substitute for a production ingress, authentication, TLS, secret management or network policy design.
+This is a development/reference configuration, not a substitute for production ingress, authentication, TLS, secret management, network policy, or workload identity design.
 
 ## Reliability and recovery
 
-The Runtime API and Streamlit deployment definitions use Docker `restart: unless-stopped` so the application services can recover from normal container restarts.
+The Runtime API, Streamlit and supporting deployment definitions use Docker `restart: unless-stopped` where applicable so services can recover from normal container restarts.
 
-Stage 11 validated controlled container restart recovery:
+Controlled restart recovery has been validated for core services, including health endpoint checks after restart.
 
-```text
-Runtime API restart -> health endpoint PASS
-Streamlit restart   -> Streamlit health endpoint PASS
-```
-
-A full EC2 stop/start recovery procedure is documented, but a full EC2 stop/start recovery test was not claimed as validated in Stage 11.
+A complete EC2 stop/start recovery procedure is documented, but a full EC2 stop/start recovery test is not claimed as validated.
 
 The intended recovery chain is:
 
@@ -287,27 +611,40 @@ Docker daemon
    +--> Prometheus
    +--> DCGM Exporter
    +--> Grafana
+   +--> Evaluation Metrics Exporter
 ```
 
-Operational recovery should validate service health before performing live inference.
+Operational recovery should validate service health before performing live inference or evaluation workloads.
 
 ## Testing
 
-The current local test suite reached:
+The current Phase 15 local regression baseline is:
 
 ```text
-86 passed
-5 integration tests passed
-3 E2E tests skipped by default
+122 passed
+3 skipped
+2 warnings
 ```
 
-Run it with:
+Run the standard test suite with:
 
 ```bash
 PYTHONPATH=services/runtime-api pytest -q
 ```
 
-The repository also contains GitHub Actions workflow validation.
+Evaluation tests can be run directly with:
+
+```bash
+PYTHONPATH=. pytest -q evaluation/tests
+```
+
+Live E2E tests require explicit opt-in:
+
+```bash
+RUN_E2E=1 PYTHONPATH=services/runtime-api pytest -m e2e -q
+```
+
+During periods without active development, GPU and other Docker workloads should be intentionally stopped to control runtime cost.
 
 ## Repository structure
 
@@ -316,10 +653,21 @@ The repository also contains GitHub Actions workflow validation.
 |-- frontend/
 |-- services/
 |   `-- runtime-api/
+|-- evaluation/
+|   |-- datasets/
+|   |-- judges/
+|   |-- metrics/
+|   |-- calibration/
+|   |-- reports/
+|   |-- schemas/
+|   |-- tests/
+|   |-- benchmark.py
+|   `-- quality_gate.py
 |-- deployment/
 |   |-- frontend/
 |   |-- runtime-api/
-|   `-- observability/
+|   |-- observability/
+|   `-- k8s/
 |-- tests/
 |-- docs/
 |   |-- architecture/
@@ -331,7 +679,8 @@ The repository also contains GitHub Actions workflow validation.
 `-- README.md
 ```
 
-The repository separates application code, deployment configuration, automated tests and operational documentation so that the platform can be understood and reproduced component by component.
+The repository separates application code, evaluation code, deployment configuration, automated tests and operational documentation so the platform can be explored component by component.
+
 ## Quick start
 
 ### 1. Clone
@@ -348,35 +697,104 @@ The validated reference environment uses:
 - Linux
 - Python 3.11 for the containerized frontend/runtime components
 - Docker and Docker Compose
-- NVIDIA GPU + NVIDIA Container Toolkit/runtime for GPU inference
-- a GPU-capable host for TinyLlama/vLLM execution
+- NVIDIA GPU and NVIDIA Container Toolkit/runtime for GPU inference
+- a GPU-capable host for TinyLlama and vLLM execution
 
-### 3. Run the tests
+### 3. Run the standard tests
 
 ```bash
 PYTHONPATH=services/runtime-api pytest -q
 ```
 
-### 4. Start the deployment components
+### 4. Review the deployment definitions
 
-The repository keeps Runtime API, frontend and observability deployment definitions under `deployment/`. Review the environment variables and external Docker network assumptions before starting services.
+Runtime API, frontend and observability deployment definitions are kept under `deployment/`.
 
-The Runtime API deployment definition is `deployment/runtime-api/docker-compose.yml` and uses `restart: unless-stopped`.
-The validated deployment uses the external network:
+The Runtime API deployment definition is:
+
+```text
+deployment/runtime-api/docker-compose.yml
+```
+
+The observability stack is under:
+
+```text
+deployment/observability/
+```
+
+The validated Docker deployment uses the external network:
 
 ```text
 enterprise-ai-net
 ```
 
+Review environment variables, external network requirements and GPU runtime assumptions before starting services.
+
 ### 5. Validate health
 
-Typical local checks:
+Typical checks include:
 
 ```bash
 curl -s http://127.0.0.1:8001/health
 curl -s http://127.0.0.1:8501/_stcore/health
 curl -s http://127.0.0.1:9090/-/healthy
 curl -s http://127.0.0.1:3000/api/health
+curl -s http://127.0.0.1:9108/metrics
+```
+
+## Evaluation workflow
+
+The Phase 15 evaluation workflow is intentionally separated from normal runtime serving.
+
+### Dataset
+
+The versioned dataset is:
+
+```text
+evaluation/datasets/v1.0/evaluation_dataset.jsonl
+```
+
+It contains 40 cases covering factual, reasoning, instruction-following, explanation, summarization and safety scenarios.
+
+### Candidate generation
+
+The current candidate models are:
+
+```text
+TinyLlama
+Phi-3 Mini
+```
+
+### Evaluation judge
+
+The dedicated judge is:
+
+```text
+Qwen/Qwen2.5-1.5B-Instruct
+```
+
+### Benchmark report
+
+The current benchmark report is:
+
+```text
+evaluation/reports/model_benchmark.json
+```
+
+### Quality gate
+
+The local quality gate can be run with:
+
+```bash
+PYTHONPATH=. python evaluation/quality_gate.py \
+  --report evaluation/reports/model_benchmark.json \
+  --model phi3
+```
+
+The GitHub Actions quality gate is manually triggered through:
+
+```text
+.github/workflows/evaluation-quality-gate.yml
 ```
 
 ## Operational documentation
@@ -391,53 +809,9 @@ curl -s http://127.0.0.1:3000/api/health
 | [Quality Guardrails](docs/llmops/quality-guardrails.md) | Grounding and bounded response validation |
 | [Deployment](docs/operations/deployment.md) | Deployment and service startup |
 | [Troubleshooting](docs/operations/troubleshooting.md) | Common failure isolation workflow |
-| [Restart Recovery](docs/operations/restart-recovery.md) | EC2/container recovery validation |
+| [Restart Recovery](docs/operations/restart-recovery.md) | Container and EC2 recovery guidance |
 | [Interview Notes](docs/interview-notes/llmops-interview-notes.md) | Interview questions and talking points |
-| [Sprint 14 Final Implementation Notes](docs/llmops/Sprint14_Final_Implementation_Notes.md) | Complete Sprint 14 implementation, testing, recovery and operational reference |
 
-## Sprint 14 LLMOps status
-
-Sprint 14 extends the platform from basic observability into operational LLMOps capabilities.
-
-Completed milestones:
-
-```text
-Stage 7  -> Explainable Routing
-Stage 8  -> Gateway Prometheus Metrics
-Stage 8A -> Streamlit Request Telemetry
-Stage 9  -> Grafana LLMOps Dashboard
-Stage 10 -> Unit / Integration / E2E Testing
-Stage 11 -> Restart / Recovery
-Stage 12 -> Final Documentation
-Stage 13 -> Final Release
-```
-
-Current Runtime API deployment:
-
-```text
-deployment/runtime-api/docker-compose.yml
-```
-
-```yaml
-image: enterprise-runtime-api:3.19
-restart: unless-stopped
-```
-
-The Runtime API image version and deployment image reference must remain synchronized whenever a new image is created.
-
-Stage 10 uses unit, integration and explicitly gated E2E testing.
-
-```bash
-PYTHONPATH=services/runtime-api pytest -q
-```
-
-Live E2E tests require explicit opt-in.
-
-```bash
-RUN_E2E=1 PYTHONPATH=services/runtime-api pytest -m e2e -q
-```
-
-During periods without active development, Docker workloads should be intentionally stopped to control GPU and runtime cost.
 ## What this project does not claim
 
 This repository is a **learning and portfolio reference implementation**, not a claim of production readiness.
@@ -449,26 +823,28 @@ The current validated work should not be described as:
 - a multi-GPU benchmarked platform
 - an SLA/SLO-backed service
 - a generally hallucination-free LLM system
+- a production-grade human-calibrated evaluation program
 
-Future production hardening would require additional controls such as identity/authentication, TLS, secrets management, ingress/API gateway, infrastructure-as-code, centralized logging, distributed tracing, evaluation pipelines, capacity planning, model lifecycle management, security scanning and disaster recovery.
+The current benchmark is a small POC smoke benchmark, and the current judge calibration data is explicitly provisional pending independent human annotation.
+
+Future production hardening would require additional controls such as identity/authentication, TLS, secrets management, ingress/API gateway, infrastructure-as-code, centralized logging, distributed tracing, production-grade evaluation pipelines, capacity planning, model lifecycle management, security scanning and disaster recovery.
 
 ## Roadmap
 
-### Near term
+### Next engineering areas
 
-- Evaluation and benchmark framework
+- stronger human-calibrated evaluation datasets and judge reliability analysis
+- richer tracing and production SLOs
 - RAG / grounded knowledge workflows
-- Fine-tuning with SFT + LoRA + QLoRA
+- fine-tuning with SFT + LoRA + QLoRA
 - agentic / tool-using AI workflows
 - Kubernetes-native application deployment
-- stronger CI/CD and automated end-to-end validation
-- quality / guardrail metrics with Prometheus and Grafana
-- richer tracing, evaluation metrics and SLOs
+- stronger automated end-to-end validation
+- model registry and model lifecycle management
 
-### Later
+### Longer-term areas
 
 - production-grade security, PII and safety controls
-- model registry and model lifecycle management
 - autoscaling and inference optimization
 - advanced adaptive routing using quality / cost / latency / resource signals
 - multimodal AI workflows
@@ -476,28 +852,33 @@ Future production hardening would require additional controls such as identity/a
 
 ## Current portfolio milestone
 
-Sprint 14 is the current completed portfolio milestone.
+**Sprint 15 — LLM Evaluation & Quality Engineering** is the current completed portfolio milestone.
 
-The final release is tagged:
+The previous Sprint 14 release remains preserved and is tagged:
 
 ```text
 sprint-14-final
 ```
 
-Completed milestones:
+Sprint 15 adds:
 
 ```text
-Stage 7  -> Explainable Routing
-Stage 8  -> Gateway Prometheus Metrics
-Stage 8A -> Streamlit Request Telemetry
-Stage 9  -> Grafana LLMOps Dashboard
-Stage 10 -> Unit / Integration / E2E Testing
-Stage 11 -> Restart / Recovery
-Stage 12 -> Final Documentation
-Stage 13 -> Final Release
+15.1 -> Evaluation Foundation
+15.2 -> Deterministic Evaluation
+15.3 -> LLM-as-a-Judge
+15.4 -> TinyLlama / Phi-3 Model Benchmark
+15.5 -> Judge Calibration Framework
+15.6 -> Prometheus / Grafana Evaluation Observability
+15.7 -> CI/CD Evaluation Quality Gate
 ```
 
-The final release includes intelligent routing, explainability, request and token telemetry, cost estimation, Prometheus/Grafana observability, quality guardrails, automated testing and restart/recovery practices.
+The completed Sprint 15 implementation includes a versioned 40-case evaluation dataset, deterministic quality metrics, a dedicated LLM-as-a-Judge workflow using Qwen/Qwen2.5-1.5B-Instruct, candidate-model benchmarking, judge calibration scaffolding, Prometheus/Grafana evaluation telemetry and a configurable evaluation quality gate.
+
+The final release tag for this milestone is intended to be:
+
+```text
+sprint-15-final
+```
 
 ## Learning path
 
@@ -520,11 +901,15 @@ Observability
     ->
 Quality guardrails
     ->
-CI/CD
+LLM evaluation
     ->
-LLMOps
+LLM-as-a-Judge
     ->
-Evaluation
+Model benchmarking
+    ->
+Evaluation observability
+    ->
+CI/CD quality gate
     ->
 RAG
     ->
@@ -537,9 +922,9 @@ Kubernetes and production hardening
 
 ## About
 
-This project is part of a hands-on journey into **LLMOps, MLOps, GenAI infrastructure, GPU inference, observability and AI platform engineering**.
+This project is part of a hands-on journey into **LLMOps, MLOps, GenAI infrastructure, GPU inference, observability, evaluation and AI platform engineering**.
 
-The repository intentionally documents both successful implementation and troubleshooting lessons so it can be useful to people learning these areas - not only to people reviewing the final code.
+The repository intentionally documents both successful implementation and troubleshooting lessons so it can be useful to people learning these areas — not only to people reviewing the final code.
 
 ## Repository
 
