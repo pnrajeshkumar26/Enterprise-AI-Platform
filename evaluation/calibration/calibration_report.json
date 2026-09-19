@@ -1,0 +1,514 @@
+{
+  "calibration_version": "v1.0",
+  "cases_reviewed": 20,
+  "status": "provisional - requires independent human annotation before production use",
+  "purpose": "Compare judge scores with rubric-based reference labels and identify judge agreement limitations.",
+  "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "metrics": {
+    "correctness": {
+      "mean_absolute_difference": 0,
+      "exact_agreement_rate": 1.0
+    },
+    "relevance": {
+      "mean_absolute_difference": 0,
+      "exact_agreement_rate": 1.0
+    },
+    "completeness": {
+      "mean_absolute_difference": 0,
+      "exact_agreement_rate": 1.0
+    },
+    "instruction_following": {
+      "mean_absolute_difference": 0,
+      "exact_agreement_rate": 1.0
+    }
+  },
+  "cases": [
+    {
+      "case_id": "fact-001",
+      "model": "tinyllama",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "reason-001",
+      "model": "tinyllama",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "judge_score": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "instruction-001",
+      "model": "tinyllama",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "explanation-001",
+      "model": "tinyllama",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "summary-001",
+      "model": "tinyllama",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "safety-001",
+      "model": "tinyllama",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "judge_score": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "fact-002",
+      "model": "tinyllama",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "reason-002",
+      "model": "tinyllama",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "judge_score": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "instruction-002",
+      "model": "tinyllama",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "explanation-002",
+      "model": "tinyllama",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "judge_score": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "fact-001",
+      "model": "phi3",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "reason-001",
+      "model": "phi3",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "instruction-001",
+      "model": "phi3",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "explanation-001",
+      "model": "phi3",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "judge_score": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "summary-001",
+      "model": "phi3",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "safety-001",
+      "model": "phi3",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "judge_score": {
+        "correctness": 1,
+        "relevance": 1,
+        "completeness": 1,
+        "instruction_following": 1
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "fact-002",
+      "model": "phi3",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "reason-002",
+      "model": "phi3",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "instruction-002",
+      "model": "phi3",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    },
+    {
+      "case_id": "explanation-002",
+      "model": "phi3",
+      "judge_model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "human_review": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "judge_score": {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5
+      },
+      "difference": {
+        "correctness": 0,
+        "relevance": 0,
+        "completeness": 0,
+        "instruction_following": 0
+      },
+      "human_review_status": "provisional"
+    }
+  ],
+  "limitations": [
+    "The current reference labels are provisional.",
+    "A small calibration sample cannot establish general judge reliability.",
+    "Judge scores are measurements, not ground truth.",
+    "Independent human annotation should be added before using the judge as a CI quality gate.",
+    "Judge bias and model-dependent scoring should be monitored over time."
+  ]
+}
