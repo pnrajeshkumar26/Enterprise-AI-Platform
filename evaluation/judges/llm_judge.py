@@ -1,6 +1,7 @@
 """LLM-as-a-Judge parsing and scoring utilities."""
 
 import json
+import re
 
 from evaluation.config import evaluation_config
 
@@ -63,13 +64,33 @@ Provide only concise evidence.
 """.strip()
 
 
+def _strip_markdown_code_fence(raw_response: str) -> str:
+    """Remove an optional Markdown JSON code fence."""
+    text = raw_response.strip()
+
+    fenced_match = re.fullmatch(
+        r"```(?:json)?\s*(.*?)\s*```",
+        text,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+
+    if fenced_match:
+        return fenced_match.group(1).strip()
+
+    return text
+
+
 def parse_judge_response(raw_response: str) -> dict:
     """Parse and validate structured judge JSON."""
+    cleaned_response = _strip_markdown_code_fence(raw_response)
 
     try:
-        payload = json.loads(raw_response)
+        payload = json.loads(cleaned_response)
     except json.JSONDecodeError as exc:
         raise ValueError("Judge response is not valid JSON") from exc
+
+    if not isinstance(payload, dict):
+        raise ValueError("Judge response must be a JSON object")
 
     missing = REQUIRED_FIELDS - payload.keys()
 
@@ -95,7 +116,10 @@ def parse_judge_response(raw_response: str) -> dict:
             raise ValueError(f"{field} must be between 1 and 5")
 
     if not isinstance(payload["evidence"], str):
-        raise ValueError("evidence must be a string")
+        payload["evidence"] = json.dumps(
+            payload["evidence"],
+            ensure_ascii=False,
+        )
 
     return payload
 

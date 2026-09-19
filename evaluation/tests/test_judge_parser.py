@@ -86,3 +86,44 @@ def test_out_of_range_score_is_rejected():
 
     with pytest.raises(ValueError, match="between 1 and 5"):
         parse_judge_response(json.dumps(payload))
+
+
+def test_parse_fenced_json_response():
+    raw_response = """```json
+{
+  "correctness": 5,
+  "relevance": 5,
+  "completeness": 5,
+  "instruction_following": 5,
+  "evidence": "The response is correct."
+}
+```"""
+
+    result = parse_judge_response(raw_response)
+
+    assert result["correctness"] == 5
+    assert result["relevance"] == 5
+    assert result["completeness"] == 5
+    assert result["instruction_following"] == 5
+
+
+def test_parse_structured_evidence():
+    payload = {
+        "correctness": 5,
+        "relevance": 5,
+        "completeness": 5,
+        "instruction_following": 5,
+        "evidence": [
+            {
+                "question": "What is the capital of France?",
+                "response": "Paris.",
+                "reference_answer": "Paris.",
+            }
+        ],
+    }
+
+    result = parse_judge_response(json.dumps(payload))
+
+    assert result["correctness"] == 5
+    assert isinstance(result["evidence"], str)
+    assert "Paris" in result["evidence"]
