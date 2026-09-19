@@ -1,0 +1,45 @@
+name: Evaluation Quality Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_model:
+        description: "Candidate model to evaluate"
+        required: true
+        default: "phi3"
+        type: string
+      min_score:
+        description: "Minimum acceptable evaluation score"
+        required: true
+        default: "3.5"
+        type: string
+
+jobs:
+  quality-gate:
+    name: Evaluation Quality Gate
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run evaluation tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install pydantic prometheus-client pytest
+          PYTHONPATH=. pytest -q evaluation/tests
+
+      - name: Run quality gate
+        run: |
+          PYTHONPATH=. python evaluation/quality_gate.py \
+            --report evaluation/reports/model_benchmark.json \
+            --model "${{ inputs.candidate_model }}" \
+            --min-score "${{ inputs.min_score }}"
