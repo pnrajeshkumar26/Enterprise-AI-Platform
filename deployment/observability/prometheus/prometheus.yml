@@ -32,3 +32,13 @@ scrape_configs:
     static_configs:
       - targets:
           - "enterprise-dcgm-exporter:9400"
+
+  # ==========================================================
+  # LLM Evaluation Metrics
+  # ==========================================================
+  - job_name: "evaluation"
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "enterprise-evaluation-metrics:9108"
