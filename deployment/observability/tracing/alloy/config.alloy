@@ -1,0 +1,62 @@
+
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    traces = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+
+    tls {
+      insecure = true
+    }
+  }
+}
+
+// Discover Docker containers for log collection.
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Collect logs only from the Enterprise Runtime API container.
+discovery.relabel "runtime_api_only" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/?enterprise-runtime-api"
+    action        = "keep"
+  }
+}
+
+// Read the selected container's stdout/stderr logs.
+loki.source.docker "runtime_api" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.runtime_api_only.output
+  forward_to = [loki.write.local.receiver]
+
+    labels = {"job" = "runtime-api", "service" = "enterprise-runtime-api"}
+}
+
+// Send application logs to Loki.
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

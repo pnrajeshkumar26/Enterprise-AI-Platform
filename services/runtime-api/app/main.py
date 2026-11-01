@@ -10,9 +10,21 @@ from app.routers import generate, health, metrics, models
 from app.routers.runtime import router as runtime_router
 from app.routers.metrics import prometheus_app
 
+from app.observability.tracing import (
+    initialize_tracing,
+    instrument_fastapi_app,
+)
+
+tracer_provider = initialize_tracing()
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    format=(
+        "%(asctime)s %(levelname)s %(name)s "
+        "trace_id=%(otelTraceID)s "
+        "span_id=%(otelSpanID)s "
+        "service=%(otelServiceName)s %(message)s"
+    ),
 )
 logger = logging.getLogger(__name__)
 
@@ -22,6 +34,23 @@ app = FastAPI(
     description="Production-grade Runtime API for Enterprise AI Platform",
 )
 
+@app.middleware("http")
+async def request_logging_middleware(
+    request: Request,
+    call_next,
+):
+    response = await call_next(request)
+
+    # Avoid adding another application log for frequent metrics scrapes.
+    if request.url.path.rstrip("/") != "/metrics":
+        logger.info(
+            "http_request_completed method=%s path=%s status_code=%s",
+            request.method,
+            request.url.path,
+            response.status_code,
+        )
+
+    return response
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(_: Request, exc: RequestValidationError):
@@ -80,3 +109,5 @@ def root():
     return {
         "message": f"Welcome to {settings.app_name}"
     }
+
+instrument_fastapi_app(app, tracer_provider)

@@ -1,0 +1,44 @@
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9095
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+storage:
+  trace:
+    backend: local
+    blocklist_poll: 5m
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+
+backend_scheduler:
+  provider:
+    retention:
+      interval: 1h
+    compaction:
+      measure_interval: 1m
+      compaction:
+        compaction_window: 1h
+        max_block_bytes: 104857600
+        block_retention: 24h
+        compacted_block_retention: 1h
+      max_jobs_per_tenant: 1000
+      min_input_blocks: 2
+      max_input_blocks: 4
+      min_cycle_interval: 30s
+
+backend_worker:
+  compaction:
+    compaction_window: 1h
+    max_block_bytes: 104857600
+    block_retention: 24h
+    compacted_block_retention: 1h

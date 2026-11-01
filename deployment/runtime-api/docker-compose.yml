@@ -1,5 +1,9 @@
 services:
   runtime-api:
+    build:
+      context: ../../services/runtime-api
+      dockerfile: Dockerfile
+
     image: enterprise-runtime-api:3.19
     container_name: enterprise-runtime-api
     restart: unless-stopped
@@ -11,6 +15,8 @@ services:
       MODEL_ROOT: /models
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
+      OTEL_SERVICE_NAME: enterprise-runtime-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://enterprise-alloy:4318"
 
     networks:
       - enterprise-ai-net

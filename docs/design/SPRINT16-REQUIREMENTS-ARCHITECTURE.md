@@ -403,3 +403,59 @@ Sprint 16 should not yet deploy Qdrant, LangGraph, MCP servers, Loki or Tempo to
 ---
 
 **Status disclaimer:** This specification is a design draft. The implementation will be accepted phase by phase against tests, demonstrations and documented operational evidence.
+
+## 14. Implementation status update - 2026-11-01
+
+This update supplements the original baseline assessment and target-state
+architecture. It records implementation evidence from the local development
+environment; it does not indicate production readiness.
+
+### Observability implementation completed locally
+
+The following Runtime API observability capabilities have been implemented
+and validated:
+
+- OpenTelemetry instrumentation for incoming FastAPI HTTP requests.
+- Outbound HTTP tracing through the Python requests instrumentation.
+- OTLP trace forwarding through Grafana Alloy to Grafana Tempo.
+- Trace and span context injection into Python application log records.
+- Runtime API request-completion logging, excluding /metrics scrapes.
+- Docker stdout/stderr log collection for the enterprise-runtime-api
+  container through Alloy and delivery to Loki.
+- Grafana provisioning for Loki and Tempo.
+- Bidirectional trace/log navigation demonstrated for /health and /models.
+- Runtime API regression tests and observability configuration validation.
+
+Implementation evidence and reproduction procedures are documented in:
+
+- docs/observability/PHASE-16.1-OPENTELEMETRY-TRACING.md
+- docs/observability/PHASE-16.2-CENTRALIZED-LOGGING.md
+
+### Current scope and limitations
+
+The implementation is limited to the local Runtime API lab:
+
+- Docker log collection currently targets only enterprise-runtime-api.
+- Outbound instrumentation covers Python requests; other HTTP clients
+  require their own instrumentation.
+- Workflow, RAG, MCP, agent and model-serving components have not yet been
+  instrumented as part of this work.
+- Error-path trace/log correlation, log redaction, sampling policy and
+  telemetry-pipeline health monitoring remain follow-on work.
+- Loki currently uses local filesystem storage, unauthenticated lab access
+  and a 72-hour retention setting.
+- Alloy uses Docker socket access for container discovery and log collection.
+  This is a privileged integration and requires a separate hardened design
+  before production use.
+- Prometheus scrape configuration was intentionally left unchanged.
+- No production deployment, production security certification or cloud
+  object-storage integration is claimed.
+
+### Sprint 16 Phase 02 status
+
+**Status: Partially implemented and locally validated.**
+
+The Runtime API tracing and correlated logging path has been demonstrated
+end to end. The broader observability exit criteria remain open until the
+remaining instrumentation, security, error-path, sampling and operational
+monitoring work is completed and validated.

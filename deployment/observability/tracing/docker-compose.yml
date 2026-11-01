@@ -1,0 +1,78 @@
+
+services:
+  tempo:
+    image: grafana/tempo:3.1.1
+    container_name: enterprise-tempo
+    restart: unless-stopped
+
+    command:
+      - "-config.file=/etc/tempo/tempo.yaml"
+
+    ports:
+      - "127.0.0.1:3200:3200"
+
+    networks:
+      - enterprise-ai-net
+
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+
+  loki:
+    image: grafana/loki:3.7.9
+    container_name: enterprise-loki
+    restart: unless-stopped
+
+    command:
+      - "--config.file=/etc/loki/loki.yaml"
+
+    ports:
+      - "127.0.0.1:3100:3100"
+
+    networks:
+      - enterprise-ai-net
+
+    volumes:
+      - ./loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki-data:/loki
+
+  alloy:
+    image: grafana/alloy:v1.21.2
+    container_name: enterprise-alloy
+    restart: unless-stopped
+
+    command:
+      - run
+      - "--server.http.listen-addr=0.0.0.0:12345"
+      - "--storage.path=/var/lib/alloy/data"
+      - /etc/alloy/config.alloy
+
+    depends_on:
+      - tempo
+      - loki
+
+    ports:
+      - "127.0.0.1:12345:12345"
+      - "127.0.0.1:4318:4318"
+
+    networks:
+      - enterprise-ai-net
+
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy-data:/var/lib/alloy/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  tempo-data:
+    name: enterprise-tempo-data
+
+  loki-data:
+    name: enterprise-loki-data
+
+  alloy-data:
+    name: enterprise-alloy-data
+
+networks:
+  enterprise-ai-net:
+    external: true
