@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import re
 from urllib.parse import urlsplit
@@ -17,6 +18,7 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 
 
 _tracer_provider: TracerProvider | None = None
@@ -37,6 +39,37 @@ def _get_traces_endpoint() -> str | None:
 
     # Tracing will still work locally, but spans will not be exported.
     return None
+
+
+
+def _get_sampler():
+    """Build a parent-based trace-ID ratio sampler from environment settings."""
+
+    sampler_name = os.getenv(
+        "OTEL_TRACES_SAMPLER",
+        "parentbased_traceidratio",
+    ).strip().lower()
+
+    if sampler_name != "parentbased_traceidratio":
+        raise ValueError(
+            "OTEL_TRACES_SAMPLER must be parentbased_traceidratio"
+        )
+
+    raw_ratio = os.getenv("OTEL_TRACES_SAMPLER_ARG", "1.0")
+
+    try:
+        ratio = float(raw_ratio)
+    except ValueError as exc:
+        raise ValueError(
+            "OTEL_TRACES_SAMPLER_ARG must be a number between 0 and 1"
+        ) from exc
+
+    if not math.isfinite(ratio) or not 0.0 <= ratio <= 1.0:
+        raise ValueError(
+            "OTEL_TRACES_SAMPLER_ARG must be between 0 and 1"
+        )
+
+    return ParentBased(root=TraceIdRatioBased(ratio))
 
 
 def _exclude_exporter_endpoint(endpoint: str) -> None:
@@ -89,7 +122,7 @@ def initialize_tracing() -> TracerProvider:
         }
     )
 
-    provider = TracerProvider(resource=resource)
+    provider = TracerProvider(resource=resource, sampler=_get_sampler())
     trace.set_tracer_provider(provider)
 
     endpoint = _get_traces_endpoint()

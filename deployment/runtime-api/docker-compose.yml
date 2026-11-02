@@ -17,6 +17,8 @@ services:
       PYTHONUNBUFFERED: "1"
       OTEL_SERVICE_NAME: enterprise-runtime-api
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://enterprise-alloy:4318"
+      OTEL_TRACES_SAMPLER: "parentbased_traceidratio"
+      OTEL_TRACES_SAMPLER_ARG: "1.0"
 
     networks:
       - enterprise-ai-net

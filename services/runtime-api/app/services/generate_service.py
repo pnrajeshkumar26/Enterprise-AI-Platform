@@ -580,7 +580,7 @@ class GenerateService:
                 routing=routing_explanation,
             )
 
-        except CapacityRoutingError:
+        except CapacityRoutingError as exc:
             # Capacity rejection is a request failure, but not a
             # generation/inference failure because no backend was invoked.
             duration = time.perf_counter() - start
@@ -605,9 +605,10 @@ class GenerateService:
                 selected_model=failure_model
             ).observe(duration)
 
-            logger.exception(
+            logger.error(
                 "Capacity routing rejected request: "
-                "request_id=%s requested=%s selected=%s duration=%.3fs",
+                "request_id=%s requested=%s selected=%s duration=%.3fs "
+                "error_type=%s",
                 (
                     decision.request_id
                     if "decision" in locals()
@@ -616,11 +617,12 @@ class GenerateService:
                 requested_model,
                 failure_model,
                 duration,
+                type(exc).__name__,
             )
 
             raise
 
-        except Exception:
+        except Exception as exc:
             # -------------------------------------------------------
             # Failure metrics
             # -------------------------------------------------------
@@ -642,9 +644,10 @@ class GenerateService:
                 selected_model=failure_model
             ).observe(duration)
 
-            logger.exception(
+            logger.error(
                 "Generation failed: "
-                "request_id=%s requested=%s selected=%s duration=%.3fs",
+                "request_id=%s requested=%s selected=%s duration=%.3fs "
+                "error_type=%s",
                 (
                     decision.request_id
                     if "decision" in locals()
@@ -653,6 +656,7 @@ class GenerateService:
                 requested_model,
                 failure_model,
                 duration,
+                type(exc).__name__,
             )
 
             raise

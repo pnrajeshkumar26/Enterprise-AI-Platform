@@ -2,6 +2,9 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - /etc/prometheus/alerts/observability-pipeline.yml
+
 scrape_configs:
 
   # ==========================================================
@@ -42,3 +45,21 @@ scrape_configs:
     static_configs:
       - targets:
           - "enterprise-evaluation-metrics:9108"
+
+  - job_name: "observability-alloy"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "enterprise-alloy:12345"
+
+  - job_name: "observability-loki"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "enterprise-loki:3100"
+
+  - job_name: "observability-tempo"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "enterprise-tempo:3200"

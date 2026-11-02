@@ -1,0 +1,12 @@
+groups:
+  - name: observability-pipeline
+    rules:
+      - alert: ObservabilityPipelineComponentDown
+        expr: up{job=~"observability-(alloy|loki|tempo)"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: observability-pipeline
+        annotations:
+          summary: "An observability pipeline component is unavailable"
+          description: "Prometheus cannot scrape {{ $labels.job }} at {{ $labels.instance }}."

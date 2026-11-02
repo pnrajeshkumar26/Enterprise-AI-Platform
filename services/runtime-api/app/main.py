@@ -34,27 +34,48 @@ app = FastAPI(
     description="Production-grade Runtime API for Enterprise AI Platform",
 )
 
+def _safe_route_template(request: Request) -> str:
+    """Return the route template, never a user-supplied path value."""
+
+    route = request.scope.get("route")
+    route_path = getattr(route, "path", None)
+
+    return route_path if isinstance(route_path, str) else "unmatched"
+
+
 @app.middleware("http")
 async def request_logging_middleware(
     request: Request,
     call_next,
 ):
-    response = await call_next(request)
+    # Avoid logging frequent Prometheus scrapes.
+    if request.url.path.rstrip("/") == "/metrics":
+        return await call_next(request)
 
-    # Avoid adding another application log for frequent metrics scrapes.
-    if request.url.path.rstrip("/") != "/metrics":
-        logger.info(
-            "http_request_completed method=%s path=%s status_code=%s",
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        logger.error(
+            "http_request_failed method=%s route=%s "
+            "status_code=500 error_type=%s",
             request.method,
-            request.url.path,
-            response.status_code,
+            _safe_route_template(request),
+            type(exc).__name__,
         )
+        raise
+
+    logger.info(
+        "http_request_completed method=%s route=%s status_code=%s",
+        request.method,
+        _safe_route_template(request),
+        response.status_code,
+    )
 
     return response
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(_: Request, exc: RequestValidationError):
-    logger.warning("Validation error: %s", exc.errors())
+    logger.warning("Request validation failed error_count=%s", len(exc.errors()))
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"error": "Validation failed", "details": exc.errors()},
@@ -63,7 +84,7 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(_: Request, exc: HTTPException):
-    logger.warning("HTTP error %s: %s", exc.status_code, exc.detail)
+    logger.warning("HTTP exception response status_code=%s", exc.status_code)
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": exc.detail},
@@ -72,7 +93,7 @@ async def http_exception_handler(_: Request, exc: HTTPException):
 
 @app.exception_handler(ValueError)
 async def value_error_handler(_: Request, exc: ValueError):
-    logger.warning("Value error: %s", exc)
+    logger.warning("Value error response error_type=ValueError")
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"error": str(exc)},
@@ -81,7 +102,7 @@ async def value_error_handler(_: Request, exc: ValueError):
 
 @app.exception_handler(FileNotFoundError)
 async def file_not_found_handler(_: Request, exc: FileNotFoundError):
-    logger.warning("Resource not found: %s", exc)
+    logger.warning("Resource not found error_type=FileNotFoundError")
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={"error": str(exc)},
@@ -90,7 +111,7 @@ async def file_not_found_handler(_: Request, exc: FileNotFoundError):
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(_: Request, exc: Exception):
-    logger.exception("Unhandled exception: %s", exc)
+    logger.error("Unhandled exception response status_code=500")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"error": "Internal server error"},
