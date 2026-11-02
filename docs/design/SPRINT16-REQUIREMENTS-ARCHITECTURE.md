@@ -459,3 +459,46 @@ The Runtime API tracing and correlated logging path has been demonstrated
 end to end. The broader observability exit criteria remain open until the
 remaining instrumentation, security, error-path, sampling and operational
 monitoring work is completed and validated.
+
+## 15. S16.4 and S16.5 planning deliverables - 2026-11-02
+
+### S16.4 - Telemetry contract and metric mapping
+
+**Status: Completed as a planning deliverable.**
+
+- Existing Runtime API metrics inventoried.
+- Evaluation exporter metrics inventoried.
+- Prometheus scrape jobs, Grafana dashboard and alert configuration reviewed.
+- Existing metrics mapped to the proposed telemetry contract.
+- Future workflow, agent, RAG, MCP and governance metrics defined.
+- Metric types, labels, cardinality, outcomes and denominator policies documented.
+
+Document:
+`docs/design/S16.4-TELEMETRY-CONTRACT-AND-METRIC-MAPPING.md`
+
+Future component metrics will be implemented and tested in their owning phases.
+
+### S16.5 - Security and cost model
+
+**Status: Completed as an initial planning deliverable.**
+
+- Initial threat and risk register documented.
+- Trust boundaries and read-only operating policy established.
+- Observability lab security limitations documented.
+- Resource and cost categories identified.
+- Storage sizing and cost estimation formulas documented.
+- GPU usage, budget and shutdown controls defined.
+- Residual risks and phase-specific mitigation ownership recorded.
+
+Document:
+`docs/security/S16.5-SECURITY-THREAT-RISK-AND-COST-MODEL.md`
+
+The proposed GPU budget remains subject to explicit approval before paid experiments. Technical security controls will be implemented and validated in their respective phases.
+
+### Sprint 16 planning backlog status
+
+**All six initial planning deliverables are documented (6/6).**
+
+This completion refers to the initial planning backlog, not the completion of the entire Enterprise AI Platform implementation.
+
+The broader Phase 02 closure activities and implementation roadmap remain in progress.
